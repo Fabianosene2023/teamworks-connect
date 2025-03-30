@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { setupPredefinedDepartments } from "@/lib/setupAdmin";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -24,18 +25,45 @@ const Auth = () => {
   const [lastName, setLastName] = useState("");
   const [department, setDepartment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [departments, setDepartments] = useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchDepartments = async () => {
+      setLoadingDepartments(true);
       try {
-        const { data, error } = await supabase.from('departments').select('*');
-        if (error) throw error;
+        // First ensure departments are set up
+        await setupPredefinedDepartments();
+        
+        // Then fetch departments
+        const { data, error } = await supabase
+          .from('departments')
+          .select('*')
+          .order('name');
+          
+        if (error) {
+          console.error('Error fetching departments:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load departments: " + error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log('Fetched departments:', data);
         setDepartments(data || []);
-      } catch (error) {
-        console.error('Error fetching departments:', error);
+      } catch (error: any) {
+        console.error('Error in fetchDepartments:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load departments: " + error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDepartments(false);
       }
     };
 
@@ -58,10 +86,20 @@ const Auth = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!department) {
+      toast({
+        title: "Error",
+        description: "Please select a department",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -72,7 +110,8 @@ const Auth = () => {
         options: {
           data: {
             first_name: firstName,
-            last_name: lastName
+            last_name: lastName,
+            department_id: department
           }
         }
       });
@@ -254,22 +293,30 @@ const Auth = () => {
                   
                   <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
-                    <Select 
-                      value={department}
-                      onValueChange={setDepartment}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept: any) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {loadingDepartments ? (
+                      <div className="py-2 text-sm text-gray-500">Loading departments...</div>
+                    ) : departments.length === 0 ? (
+                      <div className="py-2 text-sm text-red-500">
+                        No departments available. Please try again or contact support.
+                      </div>
+                    ) : (
+                      <Select 
+                        value={department}
+                        onValueChange={setDepartment}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((dept: any) => (
+                            <SelectItem key={dept.id} value={dept.id}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </CardContent>
                 
@@ -277,7 +324,7 @@ const Auth = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={loading}
+                    disabled={loading || loadingDepartments || departments.length === 0}
                   >
                     {loading ? "Creating account..." : "Sign Up"}
                   </Button>

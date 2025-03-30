@@ -15,6 +15,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import { Session } from "@supabase/supabase-js";
 import { setupPredefinedDepartments } from "./lib/setupAdmin";
+import { toast } from "./hooks/use-toast";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,24 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const setupDepartments = async () => {
+      try {
+        console.log('Setting up predefined departments...');
+        const result = await setupPredefinedDepartments();
+        console.log('Setup result:', result);
+        
+        if (!result.success) {
+          toast({
+            title: "Error",
+            description: "Failed to set up departments: " + result.message,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Failed to set up departments:', error);
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
@@ -31,7 +50,8 @@ const App = () => {
         
         // Setup departments on auth change
         if (event === 'SIGNED_IN') {
-          setupPredefinedDepartments();
+          console.log('User signed in, setting up departments...');
+          setupDepartments();
         }
       }
     );
@@ -43,7 +63,8 @@ const App = () => {
       
       // Setup departments on initial load if user is authenticated
       if (currentSession) {
-        setupPredefinedDepartments();
+        console.log('User already authenticated, setting up departments...');
+        setupDepartments();
       }
     });
 
