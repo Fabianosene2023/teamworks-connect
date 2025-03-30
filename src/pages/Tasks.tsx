@@ -38,7 +38,8 @@ import {
 import DraggableTask from "@/components/tasks/DraggableTask";
 import { PlusCircle } from "lucide-react";
 import { format } from "date-fns";
-import { useForm, zodResolver } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { isAdmin } from "@/lib/departments";
@@ -130,8 +131,7 @@ const Tasks = () => {
         .from("tasks")
         .select(`
           *,
-          departments(name),
-          profiles:assigned_to(first_name, last_name)
+          departments(name)
         `)
         .order("position");
         
@@ -140,9 +140,6 @@ const Tasks = () => {
       const tasksWithDetails = data?.map((task) => ({
         ...task,
         department: task.departments?.name || "",
-        assignee: task.profiles 
-          ? `${task.profiles.first_name || ""} ${task.profiles.last_name || ""}`.trim() 
-          : "",
       })) || [];
       
       setTasks(tasksWithDetails);
@@ -163,8 +160,7 @@ const Tasks = () => {
         .from("tasks")
         .select(`
           *,
-          departments(name),
-          profiles:assigned_to(first_name, last_name)
+          departments(name)
         `)
         .eq("department_id", departmentId)
         .order("position");
@@ -174,9 +170,6 @@ const Tasks = () => {
       const tasksWithDetails = data?.map((task) => ({
         ...task,
         department: task.departments?.name || "",
-        assignee: task.profiles 
-          ? `${task.profiles.first_name || ""} ${task.profiles.last_name || ""}`.trim() 
-          : "",
       })) || [];
       
       setTasks(tasksWithDetails);
@@ -224,7 +217,7 @@ const Tasks = () => {
         assigned_to: user.id,
         status: "active",
         position: maxPosition + 1,
-        due_date: values.due_date,
+        due_date: values.due_date ? values.due_date.toISOString() : null,
       };
       
       const { data, error } = await supabase.from("tasks").insert(newTask).select();
