@@ -19,9 +19,11 @@ export const setupPredefinedDepartments = async () => {
       
       if (error) throw error;
       
+      console.log('Predefined departments added successfully');
       return { success: true, message: 'Departamentos predefinidos adicionados com sucesso' };
     }
     
+    console.log('Departments already exist, skipping setup');
     return { success: true, message: 'Departamentos já existem' };
   } catch (error: any) {
     console.error('Erro ao configurar departamentos predefinidos:', error);
