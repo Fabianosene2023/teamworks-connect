@@ -31,6 +31,7 @@ const App = () => {
         console.log('Setup result:', result);
         
         if (!result.success) {
+          console.error('Failed to set up departments:', result.error);
           toast({
             title: "Error",
             description: "Failed to set up departments: " + result.message,
@@ -41,6 +42,9 @@ const App = () => {
         console.error('Failed to set up departments:', error);
       }
     };
+
+    // Set up immediately on app load, without waiting for auth
+    setupDepartments();
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -60,12 +64,6 @@ const App = () => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setLoading(false);
-      
-      // Setup departments on initial load if user is authenticated
-      if (currentSession) {
-        console.log('User already authenticated, setting up departments...');
-        setupDepartments();
-      }
     });
 
     return () => subscription.unsubscribe();

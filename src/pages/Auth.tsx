@@ -14,9 +14,9 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Users } from "lucide-react";
+import { Users, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { setupPredefinedDepartments } from "@/lib/setupAdmin";
+import { setupPredefinedDepartments, forceRefreshDepartments } from "@/lib/setupAdmin";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -27,46 +27,81 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
+  const [refreshingDepartments, setRefreshingDepartments] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      setLoadingDepartments(true);
-      try {
+  const fetchDepartments = async (forceRefresh = false) => {
+    setLoadingDepartments(true);
+    try {
+      // Setup or refresh departments if needed
+      let setupResult;
+      if (forceRefresh) {
+        console.log('Force refreshing departments...');
+        setupResult = await forceRefreshDepartments();
+      } else {
         // First ensure departments are set up
-        await setupPredefinedDepartments();
+        console.log('Setting up departments before fetching...');
+        setupResult = await setupPredefinedDepartments();
+      }
+      
+      if (!setupResult.success) {
+        console.error('Error setting up departments:', setupResult.error);
+        toast({
+          title: "Error",
+          description: "Failed to set up departments: " + setupResult.message,
+          variant: "destructive",
+        });
+        setDepartments([]);
+        return;
+      }
+      
+      // Then fetch departments
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .order('name');
         
-        // Then fetch departments
-        const { data, error } = await supabase
-          .from('departments')
-          .select('*')
-          .order('name');
-          
-        if (error) {
-          console.error('Error fetching departments:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load departments: " + error.message,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        console.log('Fetched departments:', data);
-        setDepartments(data || []);
-      } catch (error: any) {
-        console.error('Error in fetchDepartments:', error);
+      if (error) {
+        console.error('Error fetching departments:', error);
         toast({
           title: "Error",
           description: "Failed to load departments: " + error.message,
           variant: "destructive",
         });
-      } finally {
-        setLoadingDepartments(false);
+        setDepartments([]);
+        return;
       }
-    };
+      
+      console.log('Fetched departments:', data);
+      setDepartments(data || []);
+      
+      if (data && data.length > 0 && forceRefresh) {
+        toast({
+          title: "Success",
+          description: "Departments refreshed successfully",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error in fetchDepartments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load departments: " + error.message,
+        variant: "destructive",
+      });
+      setDepartments([]);
+    } finally {
+      setLoadingDepartments(false);
+      setRefreshingDepartments(false);
+    }
+  };
 
+  const handleRefreshDepartments = async () => {
+    setRefreshingDepartments(true);
+    await fetchDepartments(true);
+  };
+
+  useEffect(() => {
     fetchDepartments();
 
     // Check if user is already logged in
@@ -86,7 +121,7 @@ const Auth = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +216,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="mb-6 flex justify-center">
           <div className="flex items-center gap-2">
-            <div className="rounded-md bg-team-blue p-1">
+            <div className="rounded-md bg-blue-500 p-1">
               <Users size={24} className="text-white" />
             </div>
             <span className="text-2xl font-semibold">TEAM</span>
@@ -292,12 +327,41 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="department">Department</Label>
+                      {departments.length > 0 && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          className="flex items-center gap-1 h-8 px-2"
+                          onClick={handleRefreshDepartments}
+                          disabled={refreshingDepartments}
+                        >
+                          <RefreshCw size={14} className={refreshingDepartments ? "animate-spin" : ""} />
+                          <span>Refresh</span>
+                        </Button>
+                      )}
+                    </div>
+                    
                     {loadingDepartments ? (
                       <div className="py-2 text-sm text-gray-500">Loading departments...</div>
                     ) : departments.length === 0 ? (
-                      <div className="py-2 text-sm text-red-500">
-                        No departments available. Please try again or contact support.
+                      <div className="space-y-2">
+                        <div className="py-2 text-sm text-red-500">
+                          No departments available. Please try again or contact support.
+                        </div>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          className="flex items-center gap-1 w-full"
+                          onClick={handleRefreshDepartments}
+                          disabled={refreshingDepartments}
+                        >
+                          <RefreshCw size={14} className={refreshingDepartments ? "animate-spin" : ""} />
+                          <span>Refresh Departments</span>
+                        </Button>
                       </div>
                     ) : (
                       <Select 
