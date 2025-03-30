@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -8,13 +8,15 @@ import {
   ListChecks, 
   FolderKanban, 
   Calendar, 
-  Settings, 
+  Settings,
   Users,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { isAdmin } from "@/lib/departments";
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -57,6 +59,20 @@ export const Sidebar = () => {
   const currentPath = location.pathname;
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    const getUserEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+        setIsAdminUser(isAdmin(user.email));
+      }
+    };
+
+    getUserEmail();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -122,6 +138,14 @@ export const Sidebar = () => {
         <SidebarSeparator />
         
         <SidebarMenu>
+          {isAdminUser && (
+            <SidebarItem
+              icon={<ShieldCheck size={20} />}
+              label="Admin"
+              href="/admin"
+              active={currentPath.startsWith("/admin")}
+            />
+          )}
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"

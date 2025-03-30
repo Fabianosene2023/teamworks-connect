@@ -11,8 +11,10 @@ import Projects from "./pages/Projects";
 import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import { Session } from "@supabase/supabase-js";
+import { setupPredefinedDepartments } from "./lib/setupAdmin";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,11 @@ const App = () => {
       (event, newSession) => {
         setSession(newSession);
         setLoading(false);
+        
+        // Setup departments on auth change
+        if (event === 'SIGNED_IN') {
+          setupPredefinedDepartments();
+        }
       }
     );
 
@@ -33,6 +40,11 @@ const App = () => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setLoading(false);
+      
+      // Setup departments on initial load if user is authenticated
+      if (currentSession) {
+        setupPredefinedDepartments();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -54,6 +66,7 @@ const App = () => {
             <Route path="/projects" element={session ? <Projects /> : <Navigate to="/auth" />} />
             <Route path="/tasks" element={session ? <Tasks /> : <Navigate to="/auth" />} />
             <Route path="/calendar" element={session ? <Calendar /> : <Navigate to="/auth" />} />
+            <Route path="/admin" element={session ? <Admin /> : <Navigate to="/auth" />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

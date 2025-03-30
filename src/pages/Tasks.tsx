@@ -4,23 +4,27 @@ import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Filter } from "lucide-react";
-import DraggableTask from "@/components/tasks/DraggableTask";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
   DragEndEvent,
+  KeyboardSensor,
   PointerSensor,
-  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -28,151 +32,255 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import DraggableTask from "@/components/tasks/DraggableTask";
+import { PlusCircle } from "lucide-react";
+import { format } from "date-fns";
+import { useForm, zodResolver } from "react-hook-form";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { isAdmin } from "@/lib/departments";
+
+// Define schema for task validation
+const taskSchema = z.object({
+  title: z.string().min(1, "Título é obrigatório"),
+  description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]),
+  department_id: z.string().min(1, "Departamento é obrigatório"),
+  due_date: z.date().optional(),
+});
+
+interface TaskFormValues extends z.infer<typeof taskSchema> {}
 
 const Tasks = () => {
   const [tasks, setTasks] = useState<any[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [projectFilter, setProjectFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all-priority");
-  const [loading, setLoading] = useState(true);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [activeTasks, setActiveTasks] = useState<any[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [userDepartment, setUserDepartment] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Set up sensors for drag and drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    })
-  );
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      priority: "medium",
+      department_id: "",
+      due_date: undefined,
+    },
+  });
 
-  // Fetch tasks from Supabase
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            departments(name),
-            profiles!assigned_to(first_name, last_name)
-          `)
-          .order('position', { ascending: true });
-
-        if (error) throw error;
+    const fetchUserDetails = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        setUserEmail(user.email);
         
-        // Transform data to match the component props
-        const transformedTasks = data?.map(task => ({
-          id: task.id,
-          title: task.title,
-          completed: task.status === 'completed',
-          dueDate: task.due_date ? new Date(task.due_date) : undefined,
-          priority: task.priority as 'low' | 'medium' | 'high',
-          project: task.project_id,
-          department: task.departments?.name,
-          assignedTo: task.profiles ? `${task.profiles.first_name} ${task.profiles.last_name}` : undefined
-        })) || [];
-        
-        setTasks(transformedTasks);
-        setFilteredTasks(transformedTasks);
-        setLoading(false);
-      } catch (error: any) {
-        console.error('Error fetching tasks:', error);
-        toast({
-          title: 'Error fetching tasks',
-          description: error.message,
-          variant: 'destructive'
-        });
-        setLoading(false);
-      }
-    };
-
-    // Fetch projects for filter
-    const fetchProjects = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, title');
-        
-        if (error) throw error;
-        setProjects(data || []);
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-      }
-    };
-
-    fetchTasks();
-    fetchProjects();
-
-    // Set up real-time subscription for tasks
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks' },
-        () => {
-          fetchTasks();
+        // Check if user is admin
+        if (isAdmin(user.email)) {
+          fetchAllTasks();
+        } else {
+          // Get user's department
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("department_id")
+            .eq("id", user.id)
+            .single();
+            
+          if (profileError) {
+            console.error("Error fetching profile:", profileError);
+            return;
+          }
+          
+          if (profileData?.department_id) {
+            setUserDepartment(profileData.department_id);
+            fetchTasksByDepartment(profileData.department_id);
+          }
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+      }
     };
-  }, [toast]);
 
-  // Filter tasks based on search term, project, and priority
-  useEffect(() => {
-    let result = [...tasks];
-    
-    if (searchTerm) {
-      result = result.filter(task => 
-        task.title.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    if (projectFilter !== 'all') {
-      result = result.filter(task => task.project === projectFilter);
-    }
-    
-    if (priorityFilter !== 'all-priority') {
-      result = result.filter(task => task.priority === priorityFilter);
-    }
-    
-    setFilteredTasks(result);
-  }, [tasks, searchTerm, projectFilter, priorityFilter]);
+    const fetchDepartments = async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("*")
+        .order("name");
+        
+      if (error) {
+        console.error("Error fetching departments:", error);
+        return;
+      }
+      
+      setDepartments(data || []);
+    };
 
-  const handleTaskStatusChange = async (id: string, completed: boolean) => {
+    fetchUserDetails();
+    fetchDepartments();
+  }, []);
+
+  const fetchAllTasks = async () => {
     try {
-      const status = completed ? 'completed' : 'active';
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status })
-        .eq('id', id);
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          departments(name),
+          profiles:assigned_to(first_name, last_name)
+        `)
+        .order("position");
+        
+      if (error) throw error;
+      
+      const tasksWithDetails = data?.map((task) => ({
+        ...task,
+        department: task.departments?.name || "",
+        assignee: task.profiles 
+          ? `${task.profiles.first_name || ""} ${task.profiles.last_name || ""}`.trim() 
+          : "",
+      })) || [];
+      
+      setTasks(tasksWithDetails);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao carregar tarefas",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchTasksByDepartment = async (departmentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          departments(name),
+          profiles:assigned_to(first_name, last_name)
+        `)
+        .eq("department_id", departmentId)
+        .order("position");
+        
+      if (error) throw error;
+      
+      const tasksWithDetails = data?.map((task) => ({
+        ...task,
+        department: task.departments?.name || "",
+        assignee: task.profiles 
+          ? `${task.profiles.first_name || ""} ${task.profiles.last_name || ""}`.trim() 
+          : "",
+      })) || [];
+      
+      setTasks(tasksWithDetails);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao carregar tarefas",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTaskCreate = async (values: TaskFormValues) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Usuário não autenticado",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Get maximum position for tasks
+      const { data: maxPositionData, error: maxPositionError } = await supabase
+        .from("tasks")
+        .select("position")
+        .order("position", { ascending: false })
+        .limit(1);
+        
+      if (maxPositionError) throw maxPositionError;
+      
+      const maxPosition = maxPositionData?.[0]?.position || 0;
+      
+      const newTask = {
+        title: values.title,
+        description: values.description || "",
+        priority: values.priority,
+        department_id: values.department_id,
+        created_by: user.id,
+        assigned_to: user.id,
+        status: "active",
+        position: maxPosition + 1,
+        due_date: values.due_date,
+      };
+      
+      const { data, error } = await supabase.from("tasks").insert(newTask).select();
       
       if (error) throw error;
       
-      // Update local state
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === id ? { ...task, completed } : task
-        )
-      );
+      // Refresh tasks
+      if (isAdmin(user.email)) {
+        fetchAllTasks();
+      } else if (userDepartment) {
+        fetchTasksByDepartment(userDepartment);
+      }
+      
+      setIsSheetOpen(false);
+      form.reset();
+      
+      toast({
+        title: "Sucesso",
+        description: "Tarefa criada com sucesso",
+      });
     } catch (error: any) {
       toast({
-        title: 'Error updating task',
-        description: error.message,
-        variant: 'destructive'
+        title: "Erro",
+        description: error.message || "Erro ao criar tarefa",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStatusChange = async (id: string, completed: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: completed ? "completed" : "active" })
+        .eq("id", id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      const updatedTasks = tasks.map((task) =>
+        task.id === id ? { ...task, status: completed ? "completed" : "active" } : task
+      );
+      
+      setTasks(updatedTasks);
+      setActiveTasks(updatedTasks.filter((task) => task.status === "active"));
+      setCompletedTasks(updatedTasks.filter((task) => task.status === "completed"));
+      
+      toast({
+        title: "Sucesso",
+        description: `Tarefa marcada como ${completed ? "concluída" : "ativa"}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar tarefa",
+        variant: "destructive",
       });
     }
   };
@@ -184,207 +292,217 @@ const Tasks = () => {
       return;
     }
     
-    // Update the order in the local state
-    const oldIndex = filteredTasks.findIndex(task => task.id === active.id);
-    const newIndex = filteredTasks.findIndex(task => task.id === over.id);
+    // Update the active tasks order
+    const oldIndex = activeTasks.findIndex((task) => task.id === active.id);
+    const newIndex = activeTasks.findIndex((task) => task.id === over.id);
     
     if (oldIndex === -1 || newIndex === -1) return;
     
-    const newOrder = arrayMove(filteredTasks, oldIndex, newIndex);
-    setFilteredTasks(newOrder);
+    const newActiveTasks = arrayMove(activeTasks, oldIndex, newIndex);
+    setActiveTasks(newActiveTasks);
     
-    // Calculate new positions for all affected tasks
-    const updatedTasks = newOrder.map((task, index) => ({
-      id: task.id,
-      position: index
-    }));
-    
-    // Update the positions in the database
+    // Update positions in database
     try {
-      for (const task of updatedTasks) {
-        await supabase
-          .from('tasks')
-          .update({ position: task.position })
-          .eq('id', task.id);
+      const updates = newActiveTasks.map((task, index) => ({
+        id: task.id,
+        position: index,
+      }));
+      
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("tasks")
+          .update({ position: update.position })
+          .eq("id", update.id);
+          
+        if (error) throw error;
       }
     } catch (error: any) {
       toast({
-        title: 'Error updating task positions',
-        description: error.message,
-        variant: 'destructive'
+        title: "Erro",
+        description: error.message || "Erro ao atualizar posições",
+        variant: "destructive",
       });
     }
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   return (
     <MainLayout>
-      <div className="space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-            <p className="text-muted-foreground">
-              Manage and track all your tasks
-            </p>
-          </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-          </Button>
+      <div className="container mx-auto p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Tarefas</h1>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nova Tarefa
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Adicionar Nova Tarefa</SheetTitle>
+              </SheetHeader>
+              <div className="py-4">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleTaskCreate)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Título</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Digite o título da tarefa" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Descrição (opcional)" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prioridade</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a prioridade" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Baixa</SelectItem>
+                              <SelectItem value="medium">Média</SelectItem>
+                              <SelectItem value="high">Alta</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="department_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Departamento</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value || userDepartment || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o departamento" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {departments.map((dept) => (
+                                <SelectItem key={dept.id} value={dept.id}>
+                                  {dept.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button type="submit" className="w-full">
+                      Criar Tarefa
+                    </Button>
+                  </form>
+                </Form>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search tasks..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Select 
-            value={projectFilter}
-            onValueChange={setProjectFilter}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Project" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {projects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select 
-            value={priorityFilter}
-            onValueChange={setPriorityFilter}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-priority">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">All Tasks</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active">Tarefas Ativas</TabsTrigger>
+            <TabsTrigger value="completed">Tarefas Concluídas</TabsTrigger>
           </TabsList>
-          <TabsContent value="all">
-            <Card className="p-4">
-              {loading ? (
-                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
-              ) : filteredTasks.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">No tasks found</div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={filteredTasks.map(task => task.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {filteredTasks.map((task) => (
-                      <DraggableTask 
-                        key={task.id} 
+          
+          <TabsContent value="active" className="mt-4">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={activeTasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {activeTasks.length > 0 ? (
+                    activeTasks.map((task) => (
+                      <DraggableTask
+                        key={task.id}
                         id={task.id}
                         title={task.title}
-                        completed={task.completed}
-                        dueDate={task.dueDate}
+                        completed={task.status === "completed"}
+                        dueDate={task.due_date ? new Date(task.due_date) : undefined}
                         priority={task.priority}
                         project={task.project}
                         department={task.department}
-                        onStatusChange={handleTaskStatusChange}
+                        onStatusChange={handleStatusChange}
                       />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              )}
-            </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhuma tarefa ativa. Adicione uma nova tarefa!
+                    </div>
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TabsContent>
-          <TabsContent value="active">
-            <Card className="p-4">
-              {loading ? (
-                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
+          
+          <TabsContent value="completed" className="mt-4">
+            <div className="space-y-2">
+              {completedTasks.length > 0 ? (
+                completedTasks.map((task) => (
+                  <DraggableTask
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    completed={task.status === "completed"}
+                    dueDate={task.due_date ? new Date(task.due_date) : undefined}
+                    priority={task.priority}
+                    project={task.project}
+                    department={task.department}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))
               ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={filteredTasks.filter(task => !task.completed).map(task => task.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {filteredTasks
-                      .filter((task) => !task.completed)
-                      .map((task) => (
-                        <DraggableTask 
-                          key={task.id} 
-                          id={task.id}
-                          title={task.title}
-                          completed={task.completed}
-                          dueDate={task.dueDate}
-                          priority={task.priority}
-                          project={task.project}
-                          department={task.department}
-                          onStatusChange={handleTaskStatusChange}
-                        />
-                      ))}
-                  </SortableContext>
-                </DndContext>
+                <div className="text-center py-8 text-gray-500">
+                  Nenhuma tarefa concluída.
+                </div>
               )}
-            </Card>
-          </TabsContent>
-          <TabsContent value="completed">
-            <Card className="p-4">
-              {loading ? (
-                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={filteredTasks.filter(task => task.completed).map(task => task.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {filteredTasks
-                      .filter((task) => task.completed)
-                      .map((task) => (
-                        <DraggableTask 
-                          key={task.id} 
-                          id={task.id}
-                          title={task.title}
-                          completed={task.completed}
-                          dueDate={task.dueDate}
-                          priority={task.priority}
-                          project={task.project}
-                          department={task.department}
-                          onStatusChange={handleTaskStatusChange}
-                        />
-                      ))}
-                  </SortableContext>
-                </DndContext>
-              )}
-            </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

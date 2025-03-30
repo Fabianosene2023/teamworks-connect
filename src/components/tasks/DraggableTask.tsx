@@ -2,10 +2,17 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import TaskItem, { TaskItemProps } from "@/components/tasks/TaskItem";
+import TaskItem from "@/components/tasks/TaskItem";
 
-interface DraggableTaskProps extends TaskItemProps {
+interface DraggableTaskProps {
   id: string;
+  title: string;
+  completed: boolean;
+  dueDate?: Date;
+  priority: "low" | "medium" | "high";
+  project?: string;
+  department?: string;
+  onStatusChange?: (id: string, completed: boolean) => void;
 }
 
 const DraggableTask: React.FC<DraggableTaskProps> = ({ id, ...props }) => {
