@@ -9,8 +9,23 @@ import {
   FolderKanban, 
   Calendar, 
   Settings, 
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarSeparator
+} from "@/components/ui/sidebar";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -26,37 +41,58 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   active,
 }) => {
   return (
-    <Link
-      to={href}
-      className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-        active 
-          ? "bg-team-blue-light text-team-blue font-medium" 
-          : "text-gray-600 hover:bg-gray-100"
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={active} tooltip={label}>
+        <Link to={href}>
+          {icon}
+          <span>{label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 };
 
 export const Sidebar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Signed out",
+        description: "You've been successfully signed out.",
+      });
+      
+      navigate('/auth');
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred while signing out.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 border-r bg-white lg:flex lg:flex-col">
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="flex items-center gap-2">
-          <div className="rounded-md bg-team-blue p-1">
-            <Users size={20} className="text-white" />
+    <ShadcnSidebar>
+      <SidebarHeader>
+        <div className="flex h-16 items-center gap-2 px-6">
+          <div className="flex items-center gap-2">
+            <div className="rounded-md bg-team-blue p-1">
+              <Users size={20} className="text-white" />
+            </div>
+            <span className="text-xl font-semibold">TEAM</span>
           </div>
-          <span className="text-xl font-semibold">TEAM</span>
         </div>
-      </div>
-      <div className="flex-1 overflow-auto py-4">
-        <nav className="grid gap-1 px-2">
+      </SidebarHeader>
+      
+      <SidebarContent>
+        <SidebarMenu>
           <SidebarItem
             icon={<LayoutDashboard size={20} />}
             label="Dashboard"
@@ -81,17 +117,28 @@ export const Sidebar = () => {
             href="/calendar"
             active={currentPath.startsWith("/calendar")}
           />
-        </nav>
-        <Separator className="my-4" />
-        <nav className="grid gap-1 px-2">
+        </SidebarMenu>
+        
+        <SidebarSeparator />
+        
+        <SidebarMenu>
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"
             href="/settings"
             active={currentPath.startsWith("/settings")}
           />
-        </nav>
-      </div>
-    </aside>
+        </SidebarMenu>
+      </SidebarContent>
+      
+      <SidebarFooter>
+        <div className="px-3 py-2">
+          <SidebarMenuButton onClick={handleLogout}>
+            <LogOut size={20} />
+            <span>Sign Out</span>
+          </SidebarMenuButton>
+        </div>
+      </SidebarFooter>
+    </ShadcnSidebar>
   );
 };

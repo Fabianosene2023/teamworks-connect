@@ -1,7 +1,6 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
-import TaskItem from "@/components/tasks/TaskItem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,92 +13,207 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Plus, Search, Filter } from "lucide-react";
+import DraggableTask from "@/components/tasks/DraggableTask";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 const Tasks = () => {
-  // Mock data for demonstration
-  const initialTasks = [
-    {
-      id: "1",
-      title: "Design social media graphics",
-      completed: false,
-      dueDate: new Date(2023, 9, 22),
-      priority: "high" as const,
-      project: "Marketing Campaign",
-      department: "Marketing",
-    },
-    {
-      id: "2",
-      title: "Write blog post content",
-      completed: true,
-      dueDate: new Date(2023, 9, 18),
-      priority: "medium" as const,
-      project: "Marketing Campaign",
-      department: "Marketing",
-    },
-    {
-      id: "3",
-      title: "Research competitors",
-      completed: false,
-      dueDate: new Date(2023, 9, 25),
-      priority: "low" as const,
-      project: "Website Redesign",
-      department: "Design",
-    },
-    {
-      id: "4",
-      title: "Prepare monthly expense reports",
-      completed: false,
-      dueDate: new Date(2023, 9, 30),
-      priority: "medium" as const,
-      project: "Annual Financial Report",
-      department: "Finance",
-    },
-    {
-      id: "5",
-      title: "Update product documentation",
-      completed: false,
-      dueDate: new Date(2023, 10, 5),
-      priority: "medium" as const,
-      project: "Product Development",
-      department: "Engineering",
-    },
-    {
-      id: "6",
-      title: "Create onboarding slides",
-      completed: true,
-      dueDate: new Date(2023, 9, 12),
-      priority: "high" as const,
-      project: "Employee Training Program",
-      department: "HR",
-    },
-    {
-      id: "7",
-      title: "Review vendor proposals",
-      completed: false,
-      dueDate: new Date(2023, 10, 10),
-      priority: "high" as const,
-      project: "Inventory Management System",
-      department: "Operations",
-    },
-    {
-      id: "8",
-      title: "Schedule team meeting",
-      completed: true,
-      dueDate: new Date(2023, 9, 15),
-      priority: "low" as const,
-      project: "Marketing Campaign",
-      department: "Marketing",
-    },
-  ];
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all-priority");
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
+  const { toast } = useToast();
 
-  const [tasks, setTasks] = useState(initialTasks);
+  // Set up sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    })
+  );
 
-  const handleTaskStatusChange = (id: string, completed: boolean) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, completed } : task
+  // Fetch tasks from Supabase
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            departments(name),
+            profiles!assigned_to(first_name, last_name)
+          `)
+          .order('position', { ascending: true });
+
+        if (error) throw error;
+        
+        // Transform data to match the component props
+        const transformedTasks = data?.map(task => ({
+          id: task.id,
+          title: task.title,
+          completed: task.status === 'completed',
+          dueDate: task.due_date ? new Date(task.due_date) : undefined,
+          priority: task.priority as 'low' | 'medium' | 'high',
+          project: task.project_id,
+          department: task.departments?.name,
+          assignedTo: task.profiles ? `${task.profiles.first_name} ${task.profiles.last_name}` : undefined
+        })) || [];
+        
+        setTasks(transformedTasks);
+        setFilteredTasks(transformedTasks);
+        setLoading(false);
+      } catch (error: any) {
+        console.error('Error fetching tasks:', error);
+        toast({
+          title: 'Error fetching tasks',
+          description: error.message,
+          variant: 'destructive'
+        });
+        setLoading(false);
+      }
+    };
+
+    // Fetch projects for filter
+    const fetchProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, title');
+        
+        if (error) throw error;
+        setProjects(data || []);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      }
+    };
+
+    fetchTasks();
+    fetchProjects();
+
+    // Set up real-time subscription for tasks
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        () => {
+          fetchTasks();
+        }
       )
-    );
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  // Filter tasks based on search term, project, and priority
+  useEffect(() => {
+    let result = [...tasks];
+    
+    if (searchTerm) {
+      result = result.filter(task => 
+        task.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (projectFilter !== 'all') {
+      result = result.filter(task => task.project === projectFilter);
+    }
+    
+    if (priorityFilter !== 'all-priority') {
+      result = result.filter(task => task.priority === priorityFilter);
+    }
+    
+    setFilteredTasks(result);
+  }, [tasks, searchTerm, projectFilter, priorityFilter]);
+
+  const handleTaskStatusChange = async (id: string, completed: boolean) => {
+    try {
+      const status = completed ? 'completed' : 'active';
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === id ? { ...task, completed } : task
+        )
+      );
+    } catch (error: any) {
+      toast({
+        title: 'Error updating task',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      return;
+    }
+    
+    // Update the order in the local state
+    const oldIndex = filteredTasks.findIndex(task => task.id === active.id);
+    const newIndex = filteredTasks.findIndex(task => task.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    const newOrder = arrayMove(filteredTasks, oldIndex, newIndex);
+    setFilteredTasks(newOrder);
+    
+    // Calculate new positions for all affected tasks
+    const updatedTasks = newOrder.map((task, index) => ({
+      id: task.id,
+      position: index
+    }));
+    
+    // Update the positions in the database
+    try {
+      for (const task of updatedTasks) {
+        await supabase
+          .from('tasks')
+          .update({ position: task.position })
+          .eq('id', task.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error updating task positions',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
   };
 
   return (
@@ -125,23 +239,30 @@ const Tasks = () => {
               type="search"
               placeholder="Search tasks..."
               className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
+          <Select 
+            value={projectFilter}
+            onValueChange={setProjectFilter}
+          >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Project" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              <SelectItem value="marketing">Marketing Campaign</SelectItem>
-              <SelectItem value="website">Website Redesign</SelectItem>
-              <SelectItem value="finance">Annual Financial Report</SelectItem>
-              <SelectItem value="product">Product Development</SelectItem>
-              <SelectItem value="training">Employee Training Program</SelectItem>
-              <SelectItem value="inventory">Inventory Management System</SelectItem>
+              {projects.map(project => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.title}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Select defaultValue="all-priority">
+          <Select 
+            value={priorityFilter}
+            onValueChange={setPriorityFilter}
+          >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
@@ -165,39 +286,104 @@ const Tasks = () => {
           </TabsList>
           <TabsContent value="all">
             <Card className="p-4">
-              {tasks.map((task) => (
-                <TaskItem 
-                  key={task.id} 
-                  {...task} 
-                  onStatusChange={handleTaskStatusChange}
-                />
-              ))}
+              {loading ? (
+                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
+              ) : filteredTasks.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">No tasks found</div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filteredTasks.map(task => task.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filteredTasks.map((task) => (
+                      <DraggableTask 
+                        key={task.id} 
+                        id={task.id}
+                        title={task.title}
+                        completed={task.completed}
+                        dueDate={task.dueDate}
+                        priority={task.priority}
+                        project={task.project}
+                        department={task.department}
+                        onStatusChange={handleTaskStatusChange}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              )}
             </Card>
           </TabsContent>
           <TabsContent value="active">
             <Card className="p-4">
-              {tasks
-                .filter((task) => !task.completed)
-                .map((task) => (
-                  <TaskItem 
-                    key={task.id} 
-                    {...task} 
-                    onStatusChange={handleTaskStatusChange}
-                  />
-                ))}
+              {loading ? (
+                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filteredTasks.filter(task => !task.completed).map(task => task.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filteredTasks
+                      .filter((task) => !task.completed)
+                      .map((task) => (
+                        <DraggableTask 
+                          key={task.id} 
+                          id={task.id}
+                          title={task.title}
+                          completed={task.completed}
+                          dueDate={task.dueDate}
+                          priority={task.priority}
+                          project={task.project}
+                          department={task.department}
+                          onStatusChange={handleTaskStatusChange}
+                        />
+                      ))}
+                  </SortableContext>
+                </DndContext>
+              )}
             </Card>
           </TabsContent>
           <TabsContent value="completed">
             <Card className="p-4">
-              {tasks
-                .filter((task) => task.completed)
-                .map((task) => (
-                  <TaskItem 
-                    key={task.id} 
-                    {...task} 
-                    onStatusChange={handleTaskStatusChange}
-                  />
-                ))}
+              {loading ? (
+                <div className="py-8 text-center text-muted-foreground">Loading tasks...</div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filteredTasks.filter(task => task.completed).map(task => task.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {filteredTasks
+                      .filter((task) => task.completed)
+                      .map((task) => (
+                        <DraggableTask 
+                          key={task.id} 
+                          id={task.id}
+                          title={task.title}
+                          completed={task.completed}
+                          dueDate={task.dueDate}
+                          priority={task.priority}
+                          project={task.project}
+                          department={task.department}
+                          onStatusChange={handleTaskStatusChange}
+                        />
+                      ))}
+                  </SortableContext>
+                </DndContext>
+              )}
             </Card>
           </TabsContent>
         </Tabs>
