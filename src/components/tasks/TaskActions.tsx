@@ -248,6 +248,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
+      // Certifique-se de que shared_with é um array
       const currentSharedWith = currentTask?.shared_with || [];
       
       // Check if already shared

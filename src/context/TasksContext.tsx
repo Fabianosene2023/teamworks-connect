@@ -4,20 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isAdmin } from "@/lib/departments";
 
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  priority: "low" | "medium" | "high";
-  department_id?: string;
-  department?: string;
-  due_date?: string;
-  status: string;
-  position: number;
-  project?: string;
-  shared_with?: string[];
-}
-
 interface Department {
   id: string;
   name: string;
@@ -123,11 +109,13 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const tasksWithDetails = data?.map((task) => ({
         ...task,
         department: task.departments?.name || "",
+        priority: ensureValidPriority(task.priority),
+        shared_with: task.shared_with || []
       })) || [];
       
-      setTasks(tasksWithDetails);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+      setTasks(tasksWithDetails as Task[]);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -153,11 +141,13 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const tasksWithDetails = data?.map((task) => ({
         ...task,
         department: task.departments?.name || "",
+        priority: ensureValidPriority(task.priority),
+        shared_with: task.shared_with || []
       })) || [];
       
-      setTasks(tasksWithDetails);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+      setTasks(tasksWithDetails as Task[]);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -212,11 +202,13 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const tasksWithDetails = uniqueTasks.map((task) => ({
         ...task,
         department: task.departments?.name || "",
+        priority: ensureValidPriority(task.priority),
+        shared_with: task.shared_with || []
       }));
       
-      setTasks(tasksWithDetails);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+      setTasks(tasksWithDetails as Task[]);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
     } catch (error: any) {
       toast({
         title: "Erro",
@@ -224,6 +216,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         variant: "destructive",
       });
     }
+  };
+
+  // Função auxiliar para garantir que priority seja um dos valores válidos
+  const ensureValidPriority = (priority: string): "low" | "medium" | "high" => {
+    if (priority === "low" || priority === "medium" || priority === "high") {
+      return priority;
+    }
+    return "medium"; // valor padrão caso receba um valor inválido
   };
 
   const handleTaskCreate = async (values: any) => {
