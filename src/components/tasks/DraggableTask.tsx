@@ -14,6 +14,7 @@ interface DraggableTaskProps {
   department?: string;
   department_id?: string;
   description?: string;
+  shared_with?: string[];
   onStatusChange?: (id: string, completed: boolean) => void;
   onTaskUpdated?: () => void;
   departments?: any[];

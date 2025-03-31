@@ -2,7 +2,7 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Users } from "lucide-react";
 import { format } from "date-fns";
 import TaskActions from "./TaskActions";
 
@@ -16,6 +16,7 @@ interface TaskItemProps {
   department?: string;
   department_id?: string;
   description?: string;
+  shared_with?: string[];
   status?: string;
   onStatusChange?: (id: string, completed: boolean) => void;
   onTaskUpdated?: () => void;
@@ -45,6 +46,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
   department,
   department_id,
   description,
+  shared_with = [],
   status = "active",
   onStatusChange,
   onTaskUpdated = () => {},
@@ -64,8 +66,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
     department,
     department_id,
     due_date: dueDate,
+    shared_with,
     status: completed ? "completed" : "active",
   };
+
+  const isShared = shared_with && shared_with.length > 0;
 
   return (
     <div className="flex items-center justify-between p-3 border rounded-md mb-2 bg-white hover:shadow-sm transition-shadow cursor-move">
@@ -82,12 +87,18 @@ const TaskItem: React.FC<TaskItemProps> = ({
           >
             {title}
           </label>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {project && <Badge variant="outline" className="text-xs">{project}</Badge>}
             {department && <Badge variant="secondary" className="text-xs">{department}</Badge>}
             <Badge className={`text-xs ${getPriorityColor(priority)}`}>
               {priority.charAt(0).toUpperCase() + priority.slice(1)}
             </Badge>
+            {isShared && (
+              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200 flex items-center gap-1">
+                <Users size={12} />
+                Compartilhada
+              </Badge>
+            )}
           </div>
         </div>
       </div>

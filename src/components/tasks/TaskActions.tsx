@@ -39,7 +39,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Copy, Trash, Edit, Share } from "lucide-react";
+import { MoreHorizontal, Copy, Trash, Edit, Share, UserPlus } from "lucide-react";
 
 interface TaskActionsProps {
   task: {
@@ -51,6 +51,7 @@ interface TaskActionsProps {
     department?: string;
     due_date?: Date | string;
     status: string;
+    shared_with?: string[];
   };
   departments: any[];
   onTaskUpdated: () => void;
@@ -65,6 +66,7 @@ const TaskActions: React.FC<TaskActionsProps> = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isShareUserDialogOpen, setIsShareUserDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   // Edit form state
@@ -78,8 +80,9 @@ const TaskActions: React.FC<TaskActionsProps> = ({
   
   // Share form state
   const [shareEmail, setShareEmail] = useState("");
-  const [shareType, setShareType] = useState<"email" | "whatsapp">("email");
+  const [shareType, setShareType] = useState<"user" | "email" | "whatsapp">("email");
   const [shareMessage, setShareMessage] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   
   const handleDelete = async () => {
     try {
@@ -127,8 +130,15 @@ const TaskActions: React.FC<TaskActionsProps> = ({
         // Create a duplicate without the id
         const { id, created_at, updated_at, ...taskToClone } = taskData;
         
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+        
         // Update the title to indicate it's a copy
         taskToClone.title = `${taskToClone.title} (Cópia)`;
+        
+        // Ensure correct ownership
+        taskToClone.created_by = user.id;
         
         // Insert the new task
         const { error: insertError } = await supabase
@@ -191,9 +201,65 @@ const TaskActions: React.FC<TaskActionsProps> = ({
     }
   };
   
-  const handleShare = () => {
-    if (shareType === "email") {
-      if (!shareEmail) {
+  const handleShare = async () => {
+    try {
+      if (shareType === "user") {
+        setIsShareDialogOpen(false);
+        setIsShareUserDialogOpen(true);
+        return;
+      }
+      
+      if (shareType === "email") {
+        if (!shareEmail) {
+          toast({
+            title: "Erro",
+            description: "Por favor, informe um email",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // In a real app, you'd send an email here
+        // For now, let's just simulate it
+        toast({
+          title: "Compartilhado",
+          description: `Tarefa compartilhada com ${shareEmail}`,
+        });
+      } else if (shareType === "whatsapp") {
+        // Format task details for WhatsApp
+        const taskDetails = `
+*${task.title}*
+Prioridade: ${task.priority}
+${task.description ? `Descrição: ${task.description}` : ""}
+${task.department ? `Departamento: ${task.department}` : ""}
+${task.due_date ? `Data de vencimento: ${new Date(task.due_date).toLocaleDateString()}` : ""}
+${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
+        `.trim();
+        
+        // Encode the message for a URL
+        const encodedMessage = encodeURIComponent(taskDetails);
+        
+        // Open WhatsApp with the pre-filled message
+        window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
+      }
+      
+      setIsShareDialogOpen(false);
+      setShareEmail("");
+      setShareMessage("");
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao compartilhar tarefa",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleShareWithUser = async () => {
+    try {
+      setIsLoading(true);
+      
+      if (!userEmail) {
         toast({
           title: "Erro",
           description: "Por favor, informe um email",
@@ -202,33 +268,73 @@ const TaskActions: React.FC<TaskActionsProps> = ({
         return;
       }
       
-      // In a real app, you'd send an email here
-      // For now, let's just simulate it
+      // Get user by email
+      const { data: userData, error: userError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", userEmail)
+        .single();
+        
+      if (userError) {
+        if (userError.code === "PGRST116") {
+          toast({
+            title: "Erro",
+            description: "Usuário não encontrado",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw userError;
+      }
+      
+      // Update the task's shared_with array
+      const { data: currentTask, error: taskFetchError } = await supabase
+        .from("tasks")
+        .select("shared_with")
+        .eq("id", task.id)
+        .single();
+        
+      if (taskFetchError) throw taskFetchError;
+      
+      const currentSharedWith = currentTask.shared_with || [];
+      
+      // Check if already shared
+      if (currentSharedWith.includes(userData.id)) {
+        toast({
+          title: "Aviso",
+          description: "Tarefa já compartilhada com este usuário",
+        });
+        setIsShareUserDialogOpen(false);
+        return;
+      }
+      
+      // Add to shared_with array
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update({
+          shared_with: [...currentSharedWith, userData.id],
+        })
+        .eq("id", task.id);
+        
+      if (updateError) throw updateError;
+      
       toast({
-        title: "Compartilhado",
-        description: `Tarefa compartilhada com ${shareEmail}`,
+        title: "Sucesso",
+        description: `Tarefa compartilhada com ${userEmail}`,
       });
-    } else if (shareType === "whatsapp") {
-      // Format task details for WhatsApp
-      const taskDetails = `
-*${task.title}*
-Prioridade: ${task.priority}
-${task.description ? `Descrição: ${task.description}` : ""}
-${task.department ? `Departamento: ${task.department}` : ""}
-${task.due_date ? `Data de vencimento: ${new Date(task.due_date).toLocaleDateString()}` : ""}
-${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
-      `.trim();
       
-      // Encode the message for a URL
-      const encodedMessage = encodeURIComponent(taskDetails);
-      
-      // Open WhatsApp with the pre-filled message
-      window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
+      onTaskUpdated();
+      setIsShareUserDialogOpen(false);
+      setUserEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao compartilhar tarefa",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsShareDialogOpen(false);
-    setShareEmail("");
-    setShareMessage("");
   };
   
   return (
@@ -382,12 +488,13 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
               <Label htmlFor="share-type">Método de compartilhamento</Label>
               <Select
                 value={shareType}
-                onValueChange={(value) => setShareType(value as "email" | "whatsapp")}
+                onValueChange={(value) => setShareType(value as "user" | "email" | "whatsapp")}
               >
                 <SelectTrigger id="share-type">
                   <SelectValue placeholder="Selecione o método" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="user">Usuário do sistema</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp</SelectItem>
                 </SelectContent>
@@ -423,6 +530,38 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
             </Button>
             <Button onClick={handleShare}>
               Compartilhar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Share with User Dialog */}
+      <Dialog open={isShareUserDialogOpen} onOpenChange={setIsShareUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Compartilhar com Usuário</DialogTitle>
+            <DialogDescription>
+              Informe o email do usuário para compartilhar esta tarefa
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="user-email">Email do Usuário</Label>
+              <Input
+                id="user-email"
+                type="email"
+                placeholder="usuario@exemplo.com"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsShareUserDialogOpen(false)} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleShareWithUser} disabled={isLoading || !userEmail}>
+              {isLoading ? "Compartilhando..." : "Compartilhar"}
             </Button>
           </DialogFooter>
         </DialogContent>

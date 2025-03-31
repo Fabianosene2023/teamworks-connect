@@ -62,6 +62,7 @@ const Tasks = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [userDepartment, setUserDepartment] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const form = useForm<TaskFormValues>({
@@ -81,6 +82,7 @@ const Tasks = () => {
       
       if (user) {
         setUserEmail(user.email);
+        setUserId(user.id);
         
         // Check if user is admin
         if (isAdmin(user.email)) {
@@ -95,12 +97,15 @@ const Tasks = () => {
             
           if (profileError) {
             console.error("Error fetching profile:", profileError);
+            fetchUserTasks(user.id);
             return;
           }
           
           if (profileData?.department_id) {
             setUserDepartment(profileData.department_id);
             fetchTasksByDepartment(profileData.department_id);
+          } else {
+            fetchUserTasks(user.id);
           }
         }
       }
@@ -183,6 +188,65 @@ const Tasks = () => {
     }
   };
 
+  const fetchUserTasks = async (userId: string) => {
+    try {
+      // Fetch tasks created by the user
+      const { data: createdTasks, error: createdError } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          departments(name)
+        `)
+        .eq("created_by", userId)
+        .order("position");
+        
+      if (createdError) throw createdError;
+      
+      // Fetch tasks assigned to the user
+      const { data: assignedTasks, error: assignedError } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          departments(name)
+        `)
+        .eq("assigned_to", userId)
+        .order("position");
+        
+      if (assignedError) throw assignedError;
+      
+      // Fetch tasks shared with the user
+      const { data: sharedTasks, error: sharedError } = await supabase
+        .from("tasks")
+        .select(`
+          *,
+          departments(name)
+        `)
+        .contains("shared_with", [userId])
+        .order("position");
+        
+      if (sharedError) throw sharedError;
+      
+      // Combine and deduplicate tasks
+      const allTasks = [...(createdTasks || []), ...(assignedTasks || []), ...(sharedTasks || [])];
+      const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
+      
+      const tasksWithDetails = uniqueTasks.map((task) => ({
+        ...task,
+        department: task.departments?.name || "",
+      }));
+      
+      setTasks(tasksWithDetails);
+      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active"));
+      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed"));
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao carregar tarefas",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleTaskCreate = async (values: TaskFormValues) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -217,6 +281,7 @@ const Tasks = () => {
         status: "active",
         position: maxPosition + 1,
         due_date: values.due_date ? values.due_date.toISOString() : null,
+        shared_with: [],
       };
       
       const { data, error } = await supabase.from("tasks").insert(newTask).select();
@@ -228,6 +293,8 @@ const Tasks = () => {
         fetchAllTasks();
       } else if (userDepartment) {
         fetchTasksByDepartment(userDepartment);
+      } else {
+        fetchUserTasks(user.id);
       }
       
       setIsSheetOpen(false);
@@ -322,6 +389,8 @@ const Tasks = () => {
       fetchAllTasks();
     } else if (userDepartment) {
       fetchTasksByDepartment(userDepartment);
+    } else if (userId) {
+      fetchUserTasks(userId);
     }
   };
 
@@ -470,6 +539,7 @@ const Tasks = () => {
                         department={task.department}
                         department_id={task.department_id}
                         description={task.description}
+                        shared_with={task.shared_with}
                         onStatusChange={handleStatusChange}
                         onTaskUpdated={refreshTasks}
                         departments={departments}
@@ -500,6 +570,7 @@ const Tasks = () => {
                     department={task.department}
                     department_id={task.department_id}
                     description={task.description}
+                    shared_with={task.shared_with}
                     onStatusChange={handleStatusChange}
                     onTaskUpdated={refreshTasks}
                     departments={departments}
