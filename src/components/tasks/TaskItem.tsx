@@ -2,16 +2,9 @@
 import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { CalendarClock, MoreHorizontal } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { format } from "date-fns";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import TaskActions from "./TaskActions";
 
 interface TaskItemProps {
   id: string;
@@ -21,7 +14,12 @@ interface TaskItemProps {
   priority: "low" | "medium" | "high";
   project?: string;
   department?: string;
+  department_id?: string;
+  description?: string;
+  status?: string;
   onStatusChange?: (id: string, completed: boolean) => void;
+  onTaskUpdated?: () => void;
+  departments?: any[];
 }
 
 const getPriorityColor = (priority: string) => {
@@ -45,7 +43,12 @@ const TaskItem: React.FC<TaskItemProps> = ({
   priority,
   project,
   department,
+  department_id,
+  description,
+  status = "active",
   onStatusChange,
+  onTaskUpdated = () => {},
+  departments = [],
 }) => {
   const handleCheckboxChange = (checked: boolean) => {
     if (onStatusChange) {
@@ -53,8 +56,19 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
   };
 
+  const task = {
+    id,
+    title,
+    description,
+    priority,
+    department,
+    department_id,
+    due_date: dueDate,
+    status: completed ? "completed" : "active",
+  };
+
   return (
-    <div className="flex items-center justify-between p-3 border rounded-md mb-2 bg-white hover:shadow-sm transition-shadow">
+    <div className="flex items-center justify-between p-3 border rounded-md mb-2 bg-white hover:shadow-sm transition-shadow cursor-move">
       <div className="flex items-center gap-3">
         <Checkbox 
           checked={completed} 
@@ -84,22 +98,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
             <span>{format(dueDate, "MMM d, yyyy")}</span>
           </div>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="hover:bg-gray-100 p-1 rounded-md">
-              <MoreHorizontal className="h-5 w-5 text-gray-500" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Task Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Edit</DropdownMenuItem>
-            <DropdownMenuItem>Duplicate</DropdownMenuItem>
-            <DropdownMenuItem>Share</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TaskActions 
+          task={task}
+          departments={departments}
+          onTaskUpdated={onTaskUpdated}
+        />
       </div>
     </div>
   );

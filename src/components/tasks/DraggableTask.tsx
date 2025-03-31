@@ -12,7 +12,11 @@ interface DraggableTaskProps {
   priority: "low" | "medium" | "high";
   project?: string;
   department?: string;
+  department_id?: string;
+  description?: string;
   onStatusChange?: (id: string, completed: boolean) => void;
+  onTaskUpdated?: () => void;
+  departments?: any[];
 }
 
 const DraggableTask: React.FC<DraggableTaskProps> = ({ id, ...props }) => {

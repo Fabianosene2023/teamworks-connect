@@ -37,7 +37,6 @@ import {
 } from "@dnd-kit/sortable";
 import DraggableTask from "@/components/tasks/DraggableTask";
 import { PlusCircle } from "lucide-react";
-import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -318,6 +317,14 @@ const Tasks = () => {
     }
   };
 
+  const refreshTasks = () => {
+    if (isAdmin(userEmail)) {
+      fetchAllTasks();
+    } else if (userDepartment) {
+      fetchTasksByDepartment(userDepartment);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -461,7 +468,11 @@ const Tasks = () => {
                         priority={task.priority}
                         project={task.project}
                         department={task.department}
+                        department_id={task.department_id}
+                        description={task.description}
                         onStatusChange={handleStatusChange}
+                        onTaskUpdated={refreshTasks}
+                        departments={departments}
                       />
                     ))
                   ) : (
@@ -487,7 +498,11 @@ const Tasks = () => {
                     priority={task.priority}
                     project={task.project}
                     department={task.department}
+                    department_id={task.department_id}
+                    description={task.description}
                     onStatusChange={handleStatusChange}
+                    onTaskUpdated={refreshTasks}
+                    departments={departments}
                   />
                 ))
               ) : (
