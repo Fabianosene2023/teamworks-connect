@@ -2,15 +2,7 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -37,22 +29,8 @@ import {
 } from "@dnd-kit/sortable";
 import DraggableTask from "@/components/tasks/DraggableTask";
 import { PlusCircle } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { isAdmin } from "@/lib/departments";
-
-// Define schema for task validation
-const taskSchema = z.object({
-  title: z.string().min(1, "Título é obrigatório"),
-  description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]),
-  department_id: z.string().min(1, "Departamento é obrigatório"),
-  due_date: z.date().optional(),
-});
-
-interface TaskFormValues extends z.infer<typeof taskSchema> {}
+import TaskForm from "@/components/tasks/TaskForm";
 
 const Tasks = () => {
   const [tasks, setTasks] = useState<any[]>([]);
@@ -64,17 +42,6 @@ const Tasks = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      priority: "medium",
-      department_id: "",
-      due_date: undefined,
-    },
-  });
 
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -247,7 +214,7 @@ const Tasks = () => {
     }
   };
 
-  const handleTaskCreate = async (values: TaskFormValues) => {
+  const handleTaskCreate = async (values: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -284,21 +251,14 @@ const Tasks = () => {
         shared_with: [],
       };
       
-      const { data, error } = await supabase.from("tasks").insert(newTask).select();
+      const { error } = await supabase.from("tasks").insert(newTask);
       
       if (error) throw error;
       
       // Refresh tasks
-      if (isAdmin(user.email)) {
-        fetchAllTasks();
-      } else if (userDepartment) {
-        fetchTasksByDepartment(userDepartment);
-      } else {
-        fetchUserTasks(user.id);
-      }
+      refreshTasks();
       
       setIsSheetOpen(false);
-      form.reset();
       
       toast({
         title: "Sucesso",
@@ -422,91 +382,11 @@ const Tasks = () => {
                 <SheetTitle>Adicionar Nova Tarefa</SheetTitle>
               </SheetHeader>
               <div className="py-4">
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleTaskCreate)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Título</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Digite o título da tarefa" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Descrição</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Descrição (opcional)" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Prioridade</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione a prioridade" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="low">Baixa</SelectItem>
-                              <SelectItem value="medium">Média</SelectItem>
-                              <SelectItem value="high">Alta</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="department_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Departamento</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value || userDepartment || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o departamento" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {departments.map((dept) => (
-                                <SelectItem key={dept.id} value={dept.id}>
-                                  {dept.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button type="submit" className="w-full">
-                      Criar Tarefa
-                    </Button>
-                  </form>
-                </Form>
+                <TaskForm 
+                  onSubmit={handleTaskCreate} 
+                  departments={departments} 
+                  defaultDepartment={userDepartment || ""}
+                />
               </div>
             </SheetContent>
           </Sheet>
