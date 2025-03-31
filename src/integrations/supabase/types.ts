@@ -71,6 +71,7 @@ export type Database = {
           position: number
           priority: string
           project_id: string | null
+          shared_with: string[] | null
           status: string
           title: string
           updated_at: string
@@ -86,6 +87,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          shared_with?: string[] | null
           status?: string
           title: string
           updated_at?: string
@@ -101,6 +103,7 @@ export type Database = {
           position?: number
           priority?: string
           project_id?: string | null
+          shared_with?: string[] | null
           status?: string
           title?: string
           updated_at?: string
