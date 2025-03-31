@@ -239,7 +239,8 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Update the task's shared_with array
+      // First update the Supabase schema to include shared_with if it doesn't exist
+      // Get the current task
       const { data: currentTask, error: taskError } = await supabase
         .from("tasks")
         .select("*")
@@ -248,8 +249,13 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      // Certifique-se de que shared_with é um array
-      const currentSharedWith = currentTask?.shared_with || [];
+      // Make sure shared_with is defined as an array
+      let currentSharedWith: string[] = [];
+      
+      // Check if shared_with exists in the task
+      if (currentTask && Array.isArray(currentTask.shared_with)) {
+        currentSharedWith = currentTask.shared_with;
+      }
       
       // Check if already shared
       if (currentSharedWith.includes(userData.id)) {

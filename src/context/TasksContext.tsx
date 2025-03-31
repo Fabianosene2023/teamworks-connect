@@ -106,12 +106,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       if (error) throw error;
       
-      const tasksWithDetails = data?.map((task) => ({
-        ...task,
-        department: task.departments?.name || "",
-        priority: ensureValidPriority(task.priority),
-        shared_with: task.shared_with || []
-      })) || [];
+      const tasksWithDetails = data?.map((task: any) => {
+        return {
+          ...task,
+          department: task.departments?.name || "",
+          priority: ensureValidPriority(task.priority),
+          shared_with: task.shared_with || []
+        };
+      }) || [];
       
       setTasks(tasksWithDetails as Task[]);
       setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
@@ -138,12 +140,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
       if (error) throw error;
       
-      const tasksWithDetails = data?.map((task) => ({
-        ...task,
-        department: task.departments?.name || "",
-        priority: ensureValidPriority(task.priority),
-        shared_with: task.shared_with || []
-      })) || [];
+      const tasksWithDetails = data?.map((task: any) => {
+        return {
+          ...task,
+          department: task.departments?.name || "",
+          priority: ensureValidPriority(task.priority),
+          shared_with: task.shared_with || []
+        };
+      }) || [];
       
       setTasks(tasksWithDetails as Task[]);
       setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
@@ -199,12 +203,14 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const allTasks = [...(createdTasks || []), ...(assignedTasks || []), ...(sharedTasks || [])];
       const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
       
-      const tasksWithDetails = uniqueTasks.map((task) => ({
-        ...task,
-        department: task.departments?.name || "",
-        priority: ensureValidPriority(task.priority),
-        shared_with: task.shared_with || []
-      }));
+      const tasksWithDetails = uniqueTasks.map((task: any) => {
+        return {
+          ...task,
+          department: task.departments?.name || "",
+          priority: ensureValidPriority(task.priority),
+          shared_with: task.shared_with || []
+        };
+      });
       
       setTasks(tasksWithDetails as Task[]);
       setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
