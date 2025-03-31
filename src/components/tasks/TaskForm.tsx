@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTasksContext } from "@/context/TasksContext";
 
 // Define schema for task validation
 const taskSchema = z.object({
@@ -26,26 +27,34 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 interface TaskFormProps {
-  onSubmit: (values: TaskFormValues) => void;
-  departments: any[];
-  defaultDepartment?: string;
+  onSuccess?: () => void;
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ 
-  onSubmit, 
-  departments, 
-  defaultDepartment = "" 
-}) => {
+const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
+  const { departments, userDepartment, handleTaskCreate } = useTasksContext();
+  
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
       title: "",
       description: "",
       priority: "medium",
-      department_id: defaultDepartment,
+      department_id: userDepartment || "",
       due_date: undefined,
     },
   });
+  
+  const onSubmit = async (values: TaskFormValues) => {
+    try {
+      await handleTaskCreate(values);
+      form.reset();
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+    }
+  };
 
   return (
     <Form {...form}>

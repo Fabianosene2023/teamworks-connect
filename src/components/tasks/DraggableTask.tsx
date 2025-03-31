@@ -18,9 +18,14 @@ interface DraggableTaskProps {
   onStatusChange?: (id: string, completed: boolean) => void;
   onTaskUpdated?: () => void;
   departments?: any[];
+  isDraggable?: boolean;
 }
 
-const DraggableTask: React.FC<DraggableTaskProps> = ({ id, ...props }) => {
+const DraggableTask: React.FC<DraggableTaskProps> = ({ 
+  id, 
+  isDraggable = false,
+  ...props 
+}) => {
   const {
     attributes,
     listeners,
@@ -30,20 +35,20 @@ const DraggableTask: React.FC<DraggableTaskProps> = ({ id, ...props }) => {
     isDragging,
   } = useSortable({ id });
 
-  const style = {
+  const style = isDraggable ? {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 10 : 1,
-  };
+  } : {};
 
   return (
     <div
-      ref={setNodeRef}
+      ref={isDraggable ? setNodeRef : undefined}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="touch-manipulation"
+      {...(isDraggable ? attributes : {})}
+      {...(isDraggable ? listeners : {})}
+      className={isDraggable ? "touch-manipulation" : ""}
     >
       <TaskItem id={id} {...props} />
     </div>

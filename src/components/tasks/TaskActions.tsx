@@ -2,44 +2,11 @@
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Copy, Trash, Edit, Share, UserPlus } from "lucide-react";
+import { TaskEditDialog } from "./dialogs/TaskEditDialog";
+import { TaskDeleteDialog } from "./dialogs/TaskDeleteDialog";
+import { TaskShareDialog } from "./dialogs/TaskShareDialog"; 
+import { TaskShareUserDialog } from "./dialogs/TaskShareUserDialog";
+import { DropdownActionsMenu } from "./menus/DropdownActionsMenu";
 
 interface TaskActionsProps {
   task: {
@@ -56,249 +23,6 @@ interface TaskActionsProps {
   departments: any[];
   onTaskUpdated: () => void;
 }
-
-// Refactored into separate components for better organization
-const ShareEmailDialog = ({
-  isOpen, 
-  onClose, 
-  shareEmail, 
-  setShareEmail, 
-  shareMessage, 
-  setShareMessage, 
-  onShare
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  shareEmail: string;
-  setShareEmail: (value: string) => void;
-  shareMessage: string;
-  setShareMessage: (value: string) => void;
-  onShare: () => void;
-}) => (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Compartilhar por Email</DialogTitle>
-        <DialogDescription>
-          Informe o email para compartilhar esta tarefa
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="usuario@exemplo.com"
-            value={shareEmail}
-            onChange={(e) => setShareEmail(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="message">Mensagem (opcional)</Label>
-          <Textarea
-            id="message"
-            placeholder="Adicione uma mensagem..."
-            value={shareMessage}
-            onChange={(e) => setShareMessage(e.target.value)}
-          />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button onClick={onShare}>
-          Compartilhar
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
-
-const ShareUserDialog = ({
-  isOpen,
-  onClose,
-  userEmail,
-  setUserEmail,
-  onShare,
-  isLoading
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  userEmail: string;
-  setUserEmail: (value: string) => void;
-  onShare: () => void;
-  isLoading: boolean;
-}) => (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Compartilhar com Usuário</DialogTitle>
-        <DialogDescription>
-          Informe o email do usuário para compartilhar esta tarefa
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="user-email">Email do Usuário</Label>
-          <Input
-            id="user-email"
-            type="email"
-            placeholder="usuario@exemplo.com"
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-          />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose} disabled={isLoading}>
-          Cancelar
-        </Button>
-        <Button onClick={onShare} disabled={isLoading || !userEmail}>
-          {isLoading ? "Compartilhando..." : "Compartilhar"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
-
-const EditTaskDialog = ({
-  isOpen,
-  onClose,
-  editedTask,
-  setEditedTask,
-  onSave,
-  departments,
-  isLoading
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  editedTask: {
-    title: string;
-    description: string;
-    priority: "low" | "medium" | "high";
-    department_id: string;
-    due_date: string;
-  };
-  setEditedTask: (value: any) => void;
-  onSave: () => void;
-  departments: any[];
-  isLoading: boolean;
-}) => (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Editar Tarefa</DialogTitle>
-        <DialogDescription>
-          Atualize os detalhes da tarefa
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="title">Título</Label>
-          <Input
-            id="title"
-            value={editedTask.title}
-            onChange={(e) => setEditedTask({...editedTask, title: e.target.value})}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="description">Descrição</Label>
-          <Textarea
-            id="description"
-            value={editedTask.description}
-            onChange={(e) => setEditedTask({...editedTask, description: e.target.value})}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="priority">Prioridade</Label>
-          <Select
-            value={editedTask.priority}
-            onValueChange={(value) => setEditedTask({...editedTask, priority: value as "low" | "medium" | "high"})}
-          >
-            <SelectTrigger id="priority">
-              <SelectValue placeholder="Selecione a prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Baixa</SelectItem>
-              <SelectItem value="medium">Média</SelectItem>
-              <SelectItem value="high">Alta</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="department">Departamento</Label>
-          <Select
-            value={editedTask.department_id}
-            onValueChange={(value) => setEditedTask({...editedTask, department_id: value})}
-          >
-            <SelectTrigger id="department">
-              <SelectValue placeholder="Selecione o departamento" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="due_date">Data de vencimento</Label>
-          <Input
-            id="due_date"
-            type="date"
-            value={editedTask.due_date}
-            onChange={(e) => setEditedTask({...editedTask, due_date: e.target.value})}
-          />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose} disabled={isLoading}>
-          Cancelar
-        </Button>
-        <Button onClick={onSave} disabled={isLoading || !editedTask.title}>
-          {isLoading ? "Salvando..." : "Salvar alterações"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
-
-const DeleteTaskDialog = ({
-  isOpen,
-  onClose,
-  onDelete,
-  isLoading
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onDelete: () => void;
-  isLoading: boolean;
-}) => (
-  <AlertDialog open={isOpen} onOpenChange={onClose}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Excluir Tarefa</AlertDialogTitle>
-        <AlertDialogDescription>
-          Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-        <AlertDialogAction 
-          onClick={onDelete} 
-          disabled={isLoading}
-          className="bg-red-600 hover:bg-red-700"
-        >
-          {isLoading ? "Excluindo..." : "Excluir"}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
 
 const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpdated }) => {
   const { toast } = useToast();
@@ -516,12 +240,14 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       }
       
       // Update the task's shared_with array
-      const { data: currentTask } = await supabase
+      const { data: currentTask, error: taskError } = await supabase
         .from("tasks")
-        .select("shared_with")
+        .select("*")
         .eq("id", task.id)
         .single();
         
+      if (taskError) throw taskError;
+      
       const currentSharedWith = currentTask?.shared_with || [];
       
       // Check if already shared
@@ -576,47 +302,22 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
   
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="hover:bg-gray-100 p-1 rounded-md">
-            <MoreHorizontal className="h-5 w-5 text-gray-500" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Ações da Tarefa</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Editar
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDuplicate}>
-            <Copy className="h-4 w-4 mr-2" />
-            Duplicar
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsShareDialogOpen(true)}>
-            <Share className="h-4 w-4 mr-2" />
-            Compartilhar
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem 
-            className="text-red-600"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <Trash className="h-4 w-4 mr-2" />
-            Excluir
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <DropdownActionsMenu 
+        onEdit={() => setIsEditDialogOpen(true)}
+        onDuplicate={handleDuplicate}
+        onShare={() => setIsShareDialogOpen(true)}
+        onDelete={() => setIsDeleteDialogOpen(true)}
+      />
       
       {/* Dialogs */}
-      <DeleteTaskDialog 
+      <TaskDeleteDialog 
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onDelete={handleDelete}
         isLoading={isLoading}
       />
       
-      <EditTaskDialog 
+      <TaskEditDialog 
         isOpen={isEditDialogOpen}
         onClose={() => setIsEditDialogOpen(false)}
         editedTask={editedTask}
@@ -626,67 +327,19 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         isLoading={isLoading}
       />
       
-      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Compartilhar Tarefa</DialogTitle>
-            <DialogDescription>
-              Escolha como deseja compartilhar esta tarefa
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="share-type">Método de compartilhamento</Label>
-              <Select
-                value={shareType}
-                onValueChange={(value) => setShareType(value as "user" | "email" | "whatsapp")}
-              >
-                <SelectTrigger id="share-type">
-                  <SelectValue placeholder="Selecione o método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">Usuário do sistema</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {shareType === "email" && (
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="usuario@exemplo.com"
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                />
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="message">Mensagem (opcional)</Label>
-              <Textarea
-                id="message"
-                placeholder="Adicione uma mensagem..."
-                value={shareMessage}
-                onChange={(e) => setShareMessage(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleShare}>
-              Compartilhar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TaskShareDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        shareType={shareType}
+        setShareType={setShareType}
+        shareEmail={shareEmail}
+        setShareEmail={setShareEmail}
+        shareMessage={shareMessage}
+        setShareMessage={setShareMessage}
+        onShare={handleShare}
+      />
       
-      <ShareUserDialog 
+      <TaskShareUserDialog 
         isOpen={isShareUserDialogOpen}
         onClose={() => setIsShareUserDialogOpen(false)}
         userEmail={userEmail}
