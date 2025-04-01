@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,11 +104,7 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         taskToClone.created_by = user.id;
         
         // Ensure shared_with is an array
-        const sharedWith: string[] = Array.isArray(taskToClone.shared_with) 
-          ? taskToClone.shared_with 
-          : [];
-          
-        taskToClone.shared_with = sharedWith;
+        taskToClone.shared_with = Array.isArray(taskToClone.shared_with) ? taskToClone.shared_with : [];
         
         // Insert the new task
         const { error: insertError } = await supabase
@@ -254,9 +251,9 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      // Make sure shared_with is defined as an array
-      const sharedWithRaw = currentTask?.shared_with;
-      const currentSharedWith: string[] = Array.isArray(sharedWithRaw) ? sharedWithRaw : [];
+      // Handle shared_with in a type-safe way
+      const sharedWithArray = currentTask?.shared_with ?? [];
+      const currentSharedWith: string[] = Array.isArray(sharedWithArray) ? sharedWithArray : [];
       
       // Check if already shared
       if (currentSharedWith.includes(userData.id)) {
