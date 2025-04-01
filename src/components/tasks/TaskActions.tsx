@@ -236,18 +236,20 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Simplified shared_with handling to avoid TypeScript deep instantiation
-      let sharedWithIds: string[] = [];
+      // Fix the deep instantiation issue by avoiding complex type operations
+      const sharedWithIds: string[] = [];
       
+      // Using a simpler approach with type assertion
       if (data && data.shared_with) {
-        // Direct type assertion to string[] to avoid complex type inference
-        const rawSharedWith = data.shared_with as unknown as (string | null | undefined)[];
+        // Cast to any to bypass TypeScript's deep type instantiation
+        const sharedWith = data.shared_with as any;
         
-        // Simple loop to convert and filter values
-        for (const item of rawSharedWith) {
-          if (item !== null && item !== undefined) {
-            sharedWithIds.push(String(item));
-          }
+        if (Array.isArray(sharedWith)) {
+          sharedWith.forEach(item => {
+            if (item !== null && item !== undefined) {
+              sharedWithIds.push(String(item));
+            }
+          });
         }
       }
       
