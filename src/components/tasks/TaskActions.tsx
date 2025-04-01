@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -235,17 +236,17 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
+      // Simplified shared_with handling to avoid TypeScript deep instantiation
       let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const rawSharedWith = data.shared_with;
+        // Direct type assertion to string[] to avoid complex type inference
+        const rawSharedWith = data.shared_with as unknown as (string | null | undefined)[];
         
-        if (Array.isArray(rawSharedWith)) {
-          for (let i = 0; i < rawSharedWith.length; i++) {
-            const item = rawSharedWith[i];
-            if (item !== null && item !== undefined) {
-              sharedWithIds.push(String(item));
-            }
+        // Simple loop to convert and filter values
+        for (const item of rawSharedWith) {
+          if (item !== null && item !== undefined) {
+            sharedWithIds.push(String(item));
           }
         }
       }
