@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -227,6 +228,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
+      // Fetch current shared_with data
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -235,16 +237,26 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      let sharedWithIds: string[] = [];
+      // Initialize as empty array with explicit type annotation
+      const sharedWithIds: string[] = [];
       
+      // Process existing shared_with data if it exists
       if (data && data.shared_with) {
-        if (Array.isArray(data.shared_with)) {
-          sharedWithIds = data.shared_with
-            .filter(id => id !== null && id !== undefined)
-            .map(id => String(id));
+        // Type guard to ensure we're working with an array
+        const sharedWith = data.shared_with;
+        if (Array.isArray(sharedWith)) {
+          // Loop through array to avoid complex type inference
+          for (let i = 0; i < sharedWith.length; i++) {
+            const id = sharedWith[i];
+            // Only add valid string IDs
+            if (id !== null && id !== undefined) {
+              sharedWithIds.push(String(id));
+            }
+          }
         }
       }
       
+      // Check if user is already in shared_with array
       if (sharedWithIds.includes(userData.id)) {
         toast({
           title: "Aviso",
@@ -254,8 +266,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
+      // Add new user ID to the array
       sharedWithIds.push(userData.id);
       
+      // Update the task
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
@@ -301,7 +315,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(true)}
+        onDelete={() => setIsDeleteDialogOpen(false)}
       />
       
       <TaskDeleteDialog 
