@@ -7,6 +7,7 @@ import { TaskDeleteDialog } from "./dialogs/TaskDeleteDialog";
 import { TaskShareDialog } from "./dialogs/TaskShareDialog"; 
 import { TaskShareUserDialog } from "./dialogs/TaskShareUserDialog";
 import { DropdownActionsMenu } from "./menus/DropdownActionsMenu";
+import { Task } from "@/types/taskTypes";
 
 interface TaskActionsProps {
   task: {
@@ -102,6 +103,9 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         
         // Ensure correct ownership
         taskToClone.created_by = user.id;
+        
+        // Ensure shared_with is an array
+        taskToClone.shared_with = taskToClone.shared_with || [];
         
         // Insert the new task
         const { error: insertError } = await supabase
@@ -253,7 +257,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       // Check if shared_with exists and is an array
       if (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) {
-        currentSharedWith = currentTask.shared_with;
+        currentSharedWith = currentTask.shared_with as string[];
       }
       
       // Check if already shared
