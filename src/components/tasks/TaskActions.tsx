@@ -227,7 +227,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Get current task data 
+      // Get current task data
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -236,14 +236,18 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Create new array for shared users with explicit type
-      let sharedWithArray: string[] = [];
+      // Define fixed type for shared users array
+      const sharedWithArray: string[] = [];
       
-      // Only process if data exists and shared_with is present
+      // Safely process shared_with data if it exists
       if (data && data.shared_with) {
-        // Handle case when shared_with is already an array
         if (Array.isArray(data.shared_with)) {
-          sharedWithArray = data.shared_with.filter(id => typeof id === 'string');
+          // Add only valid string IDs
+          data.shared_with.forEach((id) => {
+            if (typeof id === 'string') {
+              sharedWithArray.push(id);
+            }
+          });
         }
       }
       
