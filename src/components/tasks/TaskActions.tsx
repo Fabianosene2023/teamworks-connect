@@ -165,14 +165,14 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
 
       if (taskError) throw taskError;
 
-      // Simplifying the handling of shared_with
+      // Fix for "type instantiation is excessively deep" error
+      // Use a manual approach instead of complex type transformations
       let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        // Use a basic approach to avoid TypeScript deep instantiation
-        const currentSharedWith = data.shared_with as any[];
-        for (let i = 0; i < currentSharedWith.length; i++) {
-          sharedWithIds.push(String(currentSharedWith[i]));
+        // Directly convert to string array without nested type inference
+        if (Array.isArray(data.shared_with)) {
+          sharedWithIds = data.shared_with.map(id => String(id));
         }
       }
 
@@ -218,6 +218,14 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   const handleDuplicate = async () => {
     try {
       setIsLoading(true);
+      
+      // Fix for Date conversion error - ensure due_date is always a string
+      const due_date = task.due_date 
+        ? (typeof task.due_date === 'string' 
+          ? task.due_date 
+          : task.due_date.toISOString())
+        : null;
+      
       const { data, error } = await supabase
         .from("tasks")
         .insert({
@@ -225,7 +233,7 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
           description: task.description,
           priority: task.priority,
           department_id: task.department_id,
-          due_date: task.due_date,
+          due_date: due_date,
           status: task.status,
         })
         .select();
