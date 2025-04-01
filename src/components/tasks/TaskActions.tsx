@@ -238,10 +238,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const rawArray = data.shared_with as any;
+        const rawData: any = data.shared_with;
         
-        if (Array.isArray(rawArray)) {
-          for (const item of rawArray) {
+        if (Array.isArray(rawData)) {
+          for (const item of rawData) {
             if (item !== null && item !== undefined) {
               sharedWithIds.push(String(item));
             }
