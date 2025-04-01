@@ -208,7 +208,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Get user data from profile based on email
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("id")
@@ -227,7 +226,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Get current task data
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -236,23 +234,18 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Create a new array with explicit type annotation
-      const sharedWithArray: string[] = [];
+      const sharedWithIds: string[] = [];
       
-      // Safely handle the existing shared_with data
-      if (data && data.shared_with) {
-        if (Array.isArray(data.shared_with)) {
-          // Only add valid string values to our array
-          data.shared_with.forEach((id: unknown) => {
-            if (typeof id === 'string') {
-              sharedWithArray.push(id);
-            }
-          });
-        }
+      if (data?.shared_with) {
+        const existingIds = data.shared_with as any[];
+        existingIds.forEach(id => {
+          if (typeof id === 'string') {
+            sharedWithIds.push(id);
+          }
+        });
       }
       
-      // Check if user is already in shared_with array
-      if (sharedWithArray.includes(userData.id)) {
+      if (sharedWithIds.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -261,14 +254,12 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Add the new user ID
-      sharedWithArray.push(userData.id);
+      sharedWithIds.push(userData.id);
       
-      // Update the task with the new shared_with array
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: sharedWithArray,
+          shared_with: sharedWithIds,
         })
         .eq("id", task.id);
         
