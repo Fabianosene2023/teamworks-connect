@@ -13,7 +13,7 @@ declare interface Task {
   status: string;
   position: number;
   project?: string;
-  shared_with: string[];  // Explicitly define as string array, not optional
+  shared_with: string[];  // Explicitly defined as string array, not optional
   created_by?: string;
   assigned_to?: string;
   created_at: string;

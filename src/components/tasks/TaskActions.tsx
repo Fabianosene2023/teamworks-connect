@@ -255,10 +255,8 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       if (taskError) throw taskError;
       
       // Make sure shared_with is defined as an array
-      const currentSharedWith: string[] = 
-        (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) 
-          ? (currentTask.shared_with as string[]) 
-          : [];
+      const sharedWithRaw = currentTask?.shared_with;
+      const currentSharedWith: string[] = Array.isArray(sharedWithRaw) ? sharedWithRaw : [];
       
       // Check if already shared
       if (currentSharedWith.includes(userData.id)) {
@@ -316,7 +314,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(false)}
+        onDelete={() => setIsDeleteDialogOpen(true)}
       />
       
       {/* Dialogs */}
