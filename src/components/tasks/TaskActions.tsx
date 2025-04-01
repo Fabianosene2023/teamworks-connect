@@ -1,3 +1,4 @@
+
 const handleShareWithUser = async () => {
   try {
     setIsLoading(true);
@@ -37,12 +38,20 @@ const handleShareWithUser = async () => {
 
     if (taskError) throw taskError;
 
-    // Corrigir o problema de deep type instantiation, simplificando a manipulação de shared_with
-    let sharedWithIds: string[] = [];
-
-    // Forçar o tipo de shared_with para um array de strings
-    if (data && Array.isArray(data.shared_with)) {
-      sharedWithIds = data.shared_with.filter((item: any) => item != null).map(String);
+    // Simplify the shared_with handling to avoid deep type instantiation
+    const sharedWithIds: string[] = [];
+    
+    // Safely process the shared_with array from the database
+    if (data && data.shared_with) {
+      // Cast to any to avoid TypeScript's deep type analysis
+      const sharedWith = data.shared_with as any[];
+      
+      // Filter out null values and convert all items to strings
+      for (let i = 0; i < sharedWith.length; i++) {
+        if (sharedWith[i] != null) {
+          sharedWithIds.push(String(sharedWith[i]));
+        }
+      }
     }
 
     if (sharedWithIds.includes(userData.id)) {
