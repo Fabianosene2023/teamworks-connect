@@ -6,6 +6,7 @@ import { TaskDeleteDialog } from "./dialogs/TaskDeleteDialog";
 import { TaskShareDialog } from "./dialogs/TaskShareDialog"; 
 import { TaskShareUserDialog } from "./dialogs/TaskShareUserDialog";
 import { DropdownActionsMenu } from "./menus/DropdownActionsMenu";
+import { Task } from "@/types/taskTypes";
 
 interface TaskActionsProps {
   task: {
