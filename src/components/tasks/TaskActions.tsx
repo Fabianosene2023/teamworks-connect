@@ -251,9 +251,17 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      // Handle shared_with in a type-safe way
-      const sharedWithArray = currentTask?.shared_with ?? [];
-      const currentSharedWith: string[] = Array.isArray(sharedWithArray) ? sharedWithArray : [];
+      // Simplify handling of shared_with array
+      const currentSharedWith: string[] = [];
+      
+      // Only add items if shared_with exists and is an array
+      if (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) {
+        currentTask.shared_with.forEach(id => {
+          if (typeof id === 'string') {
+            currentSharedWith.push(id);
+          }
+        });
+      }
       
       // Check if already shared
       if (currentSharedWith.includes(userData.id)) {
