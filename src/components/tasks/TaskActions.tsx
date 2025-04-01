@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -245,26 +244,25 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       // Get the current task
       const { data: currentTask, error: taskError } = await supabase
         .from("tasks")
-        .select("*")
+        .select("shared_with")
         .eq("id", task.id)
         .single();
         
       if (taskError) throw taskError;
       
-      // Simplify handling of shared_with array
-      const currentSharedWith: string[] = [];
+      // Create a clean new array for shared_with
+      let sharedWith: string[] = [];
       
-      // Only add items if shared_with exists and is an array
-      if (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) {
-        currentTask.shared_with.forEach(id => {
-          if (typeof id === 'string') {
-            currentSharedWith.push(id);
-          }
-        });
+      // Safely handle the current shared_with
+      if (currentTask?.shared_with) {
+        // Ensure we're dealing with strings only
+        sharedWith = Array.isArray(currentTask.shared_with) 
+          ? currentTask.shared_with.filter(id => typeof id === 'string')
+          : [];
       }
       
       // Check if already shared
-      if (currentSharedWith.includes(userData.id)) {
+      if (sharedWith.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -277,7 +275,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: [...currentSharedWith, userData.id],
+          shared_with: [...sharedWith, userData.id],
         })
         .eq("id", task.id);
         
