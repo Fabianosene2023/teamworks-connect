@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -235,15 +236,19 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      let sharedWithIds: string[] = [];
+      // Simplify this logic to avoid the TypeScript error
+      const sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const currentSharedWith = data.shared_with as unknown;
-        
-        if (Array.isArray(currentSharedWith)) {
-          sharedWithIds = currentSharedWith
-            .filter(id => id !== null && id !== undefined)
-            .map(id => String(id));
+        // Convert to a simple array of strings, avoiding complex type operations
+        const existingSharedWith = data.shared_with as any[];
+        if (Array.isArray(existingSharedWith)) {
+          for (let i = 0; i < existingSharedWith.length; i++) {
+            const id = existingSharedWith[i];
+            if (id !== null && id !== undefined) {
+              sharedWithIds.push(String(id));
+            }
+          }
         }
       }
       
