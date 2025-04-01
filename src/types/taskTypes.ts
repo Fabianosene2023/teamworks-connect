@@ -15,6 +15,6 @@ export interface Task {
   status: string;
   position: number;
   due_date: string | null;
-  shared_with: string[];
+  shared_with: string[];  // Ensure this is not optional
   department?: string;
 }

@@ -1,7 +1,7 @@
 
 /// <reference types="vite/client" />
 
-// Definir tipos globais para o projeto
+// Define global types for the project
 declare interface Task {
   id: string;
   title: string;
@@ -13,7 +13,7 @@ declare interface Task {
   status: string;
   position: number;
   project?: string;
-  shared_with: string[];
+  shared_with: string[];  // Explicitly define as string array, not optional
   created_by?: string;
   assigned_to?: string;
   created_at: string;

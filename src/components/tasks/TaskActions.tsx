@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +7,6 @@ import { TaskDeleteDialog } from "./dialogs/TaskDeleteDialog";
 import { TaskShareDialog } from "./dialogs/TaskShareDialog"; 
 import { TaskShareUserDialog } from "./dialogs/TaskShareUserDialog";
 import { DropdownActionsMenu } from "./menus/DropdownActionsMenu";
-import { Task } from "@/types/taskTypes";
 
 interface TaskActionsProps {
   task: {
@@ -105,7 +105,7 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         
         // Ensure shared_with is an array
         const sharedWith = Array.isArray(taskToClone.shared_with) ? taskToClone.shared_with : [];
-        taskToClone.shared_with = sharedWith;
+        taskToClone.shared_with = sharedWith as string[];
         
         // Insert the new task
         const { error: insertError } = await supabase
