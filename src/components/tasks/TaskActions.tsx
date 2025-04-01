@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -228,7 +227,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Fetch current shared_with data
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -237,26 +235,20 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Initialize as empty array with explicit type annotation
       const sharedWithIds: string[] = [];
       
-      // Process existing shared_with data if it exists
       if (data && data.shared_with) {
-        // Type guard to ensure we're working with an array
-        const sharedWith = data.shared_with;
-        if (Array.isArray(sharedWith)) {
-          // Loop through array to avoid complex type inference
-          for (let i = 0; i < sharedWith.length; i++) {
-            const id = sharedWith[i];
-            // Only add valid string IDs
-            if (id !== null && id !== undefined) {
+        const existingSharedWith = data.shared_with;
+        if (Array.isArray(existingSharedWith)) {
+          for (let i = 0; i < existingSharedWith.length; i++) {
+            const id = existingSharedWith[i];
+            if (typeof id === 'string' || typeof id === 'number') {
               sharedWithIds.push(String(id));
             }
           }
         }
       }
       
-      // Check if user is already in shared_with array
       if (sharedWithIds.includes(userData.id)) {
         toast({
           title: "Aviso",
@@ -266,10 +258,8 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Add new user ID to the array
       sharedWithIds.push(userData.id);
       
-      // Update the task
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
@@ -315,7 +305,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(false)}
+        onDelete={() => setIsDeleteDialogOpen(true)}
       />
       
       <TaskDeleteDialog 
