@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,6 +209,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
+      // Get user data from profile based on email
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("id")
@@ -226,24 +228,30 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
+      // Get current task data to check shared_with array
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
         .eq("id", task.id)
         .single();
-        
+      
       if (taskError) throw taskError;
       
+      // Create a simple string array to avoid complex type inference
       const currentSharedWith: string[] = [];
       
-      if (data && data.shared_with && Array.isArray(data.shared_with)) {
-        data.shared_with.forEach((id: any) => {
-          if (typeof id === 'string') {
-            currentSharedWith.push(id);
-          }
-        });
+      // Safely add each valid ID to our array
+      if (data && data.shared_with) {
+        if (Array.isArray(data.shared_with)) {
+          data.shared_with.forEach((id: any) => {
+            if (typeof id === 'string') {
+              currentSharedWith.push(id);
+            }
+          });
+        }
       }
       
+      // Check if user is already in shared_with array
       if (currentSharedWith.includes(userData.id)) {
         toast({
           title: "Aviso",
@@ -253,8 +261,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
+      // Create a new array with the additional user
       const newSharedWith: string[] = [...currentSharedWith, userData.id];
       
+      // Update the task with the new shared_with array
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
