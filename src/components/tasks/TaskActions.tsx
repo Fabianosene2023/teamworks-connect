@@ -302,7 +302,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(true)}
+        onDelete={() => setIsDeleteDialogOpen(false)}
       />
       
       <TaskDeleteDialog 
