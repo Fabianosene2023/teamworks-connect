@@ -236,14 +236,14 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Define fixed type for shared users array
+      // Create a new array with explicit type annotation
       const sharedWithArray: string[] = [];
       
-      // Safely process shared_with data if it exists
+      // Safely handle the existing shared_with data
       if (data && data.shared_with) {
         if (Array.isArray(data.shared_with)) {
-          // Add only valid string IDs
-          data.shared_with.forEach((id) => {
+          // Only add valid string values to our array
+          data.shared_with.forEach((id: unknown) => {
             if (typeof id === 'string') {
               sharedWithArray.push(id);
             }
