@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -228,7 +227,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Get current task data to check shared_with array
+      // Get current task data 
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -237,22 +236,19 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Create a simple string array to avoid complex type inference
-      const currentSharedWith: string[] = [];
+      // Create new array for shared users with explicit type
+      let sharedWithArray: string[] = [];
       
-      // Safely add each valid ID to our array
+      // Only process if data exists and shared_with is present
       if (data && data.shared_with) {
+        // Handle case when shared_with is already an array
         if (Array.isArray(data.shared_with)) {
-          data.shared_with.forEach((id: any) => {
-            if (typeof id === 'string') {
-              currentSharedWith.push(id);
-            }
-          });
+          sharedWithArray = data.shared_with.filter(id => typeof id === 'string');
         }
       }
       
       // Check if user is already in shared_with array
-      if (currentSharedWith.includes(userData.id)) {
+      if (sharedWithArray.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -261,14 +257,14 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Create a new array with the additional user
-      const newSharedWith: string[] = [...currentSharedWith, userData.id];
+      // Add the new user ID
+      sharedWithArray.push(userData.id);
       
       // Update the task with the new shared_with array
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: newSharedWith,
+          shared_with: sharedWithArray,
         })
         .eq("id", task.id);
         
