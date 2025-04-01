@@ -236,13 +236,14 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       const sharedWithIds: string[] = [];
       
-      if (data?.shared_with) {
+      if (data && data.shared_with) {
         const existingIds = data.shared_with as any[];
-        existingIds.forEach(id => {
+        for (let i = 0; i < existingIds.length; i++) {
+          const id = existingIds[i];
           if (typeof id === 'string') {
             sharedWithIds.push(id);
           }
-        });
+        }
       }
       
       if (sharedWithIds.includes(userData.id)) {
@@ -259,7 +260,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: sharedWithIds,
+          shared_with: sharedWithIds as string[],
         })
         .eq("id", task.id);
         
