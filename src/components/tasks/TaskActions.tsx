@@ -237,9 +237,9 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const existingIds = data.shared_with as any[];
-        for (let i = 0; i < existingIds.length; i++) {
-          const id = existingIds[i];
+        const existingSharedWith = data.shared_with as unknown[];
+        for (let i = 0; i < existingSharedWith.length; i++) {
+          const id = existingSharedWith[i];
           if (typeof id === 'string') {
             sharedWithIds.push(id);
           }
@@ -260,7 +260,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: sharedWithIds as string[],
+          shared_with: sharedWithIds,
         })
         .eq("id", task.id);
         
