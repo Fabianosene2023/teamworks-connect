@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +6,20 @@ import { isAdmin } from "@/lib/departments";
 interface Department {
   id: string;
   name: string;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  department_id: string;
+  created_by: string;
+  assigned_to: string;
+  status: string;
+  position: number;
+  due_date: string | null;
+  shared_with: string[];
 }
 
 interface TasksContextType {
@@ -224,7 +237,6 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Função auxiliar para garantir que priority seja um dos valores válidos
   const ensureValidPriority = (priority: string): "low" | "medium" | "high" => {
     if (priority === "low" || priority === "medium" || priority === "high") {
       return priority;

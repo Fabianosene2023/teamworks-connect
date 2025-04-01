@@ -251,8 +251,8 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       // Make sure shared_with is defined as an array
       let currentSharedWith: string[] = [];
       
-      // Check if shared_with exists in the task
-      if (currentTask && Array.isArray(currentTask.shared_with)) {
+      // Check if shared_with exists and is an array
+      if (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) {
         currentSharedWith = currentTask.shared_with;
       }
       
@@ -312,7 +312,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(true)}
+        onDelete={() => setIsDeleteDialogOpen(false)}
       />
       
       {/* Dialogs */}
