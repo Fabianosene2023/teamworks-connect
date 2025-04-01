@@ -79,7 +79,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
     try {
       setIsLoading(true);
       
-      // Get the task data first
       const { data: taskData, error: fetchError } = await supabase
         .from("tasks")
         .select("*")
@@ -89,23 +88,17 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
       if (fetchError) throw fetchError;
       
       if (taskData) {
-        // Create a duplicate without the id
         const { id, created_at, updated_at, ...taskToClone } = taskData;
         
-        // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
         
-        // Update the title to indicate it's a copy
         taskToClone.title = `${taskToClone.title} (Cópia)`;
         
-        // Ensure correct ownership
         taskToClone.created_by = user.id;
         
-        // Ensure shared_with is an array
         taskToClone.shared_with = Array.isArray(taskToClone.shared_with) ? taskToClone.shared_with : [];
         
-        // Insert the new task
         const { error: insertError } = await supabase
           .from("tasks")
           .insert(taskToClone);
@@ -176,8 +169,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
       return;
     }
     
-    // In a real app, you'd send an email here
-    // For now, let's just simulate it
     toast({
       title: "Compartilhado",
       description: `Tarefa compartilhada com ${shareEmail}`,
@@ -189,7 +180,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   };
   
   const handleShareWithWhatsApp = () => {
-    // Format task details for WhatsApp
     const taskDetails = `
 *${task.title}*
 Prioridade: ${task.priority}
@@ -199,10 +189,8 @@ ${task.due_date ? `Data de vencimento: ${new Date(task.due_date).toLocaleDateStr
 ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
     `.trim();
     
-    // Encode the message for a URL
     const encodedMessage = encodeURIComponent(taskDetails);
     
-    // Open WhatsApp with the pre-filled message
     window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
     
     setIsShareDialogOpen(false);
@@ -222,7 +210,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Get user by email
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("id")
@@ -241,8 +228,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // Get the current task
-      const { data: currentTask, error: taskError } = await supabase
+      const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
         .eq("id", task.id)
@@ -250,19 +236,13 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      // Create a clean new array for shared_with
-      let sharedWith: string[] = [];
+      const currentTask = data as { shared_with: string[] | null };
       
-      // Safely handle the current shared_with
-      if (currentTask?.shared_with) {
-        // Ensure we're dealing with strings only
-        sharedWith = Array.isArray(currentTask.shared_with) 
-          ? currentTask.shared_with.filter(id => typeof id === 'string')
-          : [];
-      }
+      const currentSharedWith: string[] = Array.isArray(currentTask?.shared_with) 
+        ? currentTask.shared_with.filter(id => typeof id === 'string')
+        : [];
       
-      // Check if already shared
-      if (sharedWith.includes(userData.id)) {
+      if (currentSharedWith.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -271,11 +251,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Add to shared_with array
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: [...sharedWith, userData.id],
+          shared_with: [...currentSharedWith, userData.id],
         })
         .eq("id", task.id);
         
@@ -320,7 +299,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onDelete={() => setIsDeleteDialogOpen(true)}
       />
       
-      {/* Dialogs */}
       <TaskDeleteDialog 
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
