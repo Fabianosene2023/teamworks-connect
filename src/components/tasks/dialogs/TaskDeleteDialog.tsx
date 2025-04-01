@@ -1,49 +1,48 @@
 
 import React from "react";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface TaskDeleteDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onDelete: () => void;
   isLoading: boolean;
+  taskTitle: string;
 }
 
 export const TaskDeleteDialog: React.FC<TaskDeleteDialogProps> = ({
   isOpen,
   onClose,
   onDelete,
-  isLoading
+  isLoading,
+  taskTitle
 }) => {
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir Tarefa</AlertDialogTitle>
-          <AlertDialogDescription>
-            Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={onDelete} 
-            disabled={isLoading}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            {isLoading ? "Excluindo..." : "Excluir"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirmar Exclusão</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir a tarefa <strong>"{taskTitle}"</strong>? Esta ação não pode ser desfeita.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button variant="destructive" onClick={onDelete} disabled={isLoading}>
+            {isLoading ? "Excluindo..." : "Excluir Tarefa"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

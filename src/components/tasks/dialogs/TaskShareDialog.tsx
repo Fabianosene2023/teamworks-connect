@@ -30,6 +30,8 @@ interface TaskShareDialogProps {
   shareMessage: string;
   setShareMessage: (value: string) => void;
   onShare: () => void;
+  departments: any[];
+  isLoading: boolean;
 }
 
 export const TaskShareDialog: React.FC<TaskShareDialogProps> = ({
@@ -41,7 +43,9 @@ export const TaskShareDialog: React.FC<TaskShareDialogProps> = ({
   setShareEmail,
   shareMessage,
   setShareMessage,
-  onShare
+  onShare,
+  departments,
+  isLoading
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -94,11 +98,11 @@ export const TaskShareDialog: React.FC<TaskShareDialogProps> = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={onShare}>
-            Compartilhar
+          <Button onClick={onShare} disabled={isLoading}>
+            {isLoading ? "Compartilhando..." : "Compartilhar"}
           </Button>
         </DialogFooter>
       </DialogContent>

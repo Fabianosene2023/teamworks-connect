@@ -34,9 +34,9 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isShareUserDialogOpen, setIsShareUserDialogOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
-  const [shareType, setShareType] = useState<"user" | "department">("user");
+  const [shareType, setShareType] = useState<"user" | "email" | "whatsapp">("user");
   const [shareEmail, setShareEmail] = useState("");
-  const [shareDepartment, setShareDepartment] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
   
   // Initialize editedTask with the task data
   const [editedTask, setEditedTask] = useState({
@@ -165,7 +165,7 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
 
       if (taskError) throw taskError;
 
-      // Simplificando a manipulação de shared_with
+      // Simplifying the handling of shared_with
       let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
@@ -283,8 +283,8 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         setShareType={setShareType}
         shareEmail={shareEmail}
         setShareEmail={setShareEmail}
-        shareDepartment={shareDepartment}
-        setShareDepartment={setShareDepartment}
+        shareMessage={shareMessage}
+        setShareMessage={setShareMessage}
         onShare={() => {}}
         departments={departments}
         isLoading={isLoading}
