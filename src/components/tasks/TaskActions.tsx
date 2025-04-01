@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -235,11 +236,14 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
+      // Fix for TS2589: Define explicit string array type and handle safely
       const sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
+        // Ensure shared_with is treated as an array safely
         const sharedWithArray = Array.isArray(data.shared_with) ? data.shared_with : [];
         
+        // Use traditional for loop with type checking to avoid complex type inference
         for (let i = 0; i < sharedWithArray.length; i++) {
           const id = sharedWithArray[i];
           if (typeof id === 'string') {
