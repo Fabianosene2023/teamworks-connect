@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -235,17 +236,20 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
+      // Fix for the TypeScript error - simplify the shared_with handling
       let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const sharedWithData = data.shared_with as any;
+        // Explicitly cast to any to avoid deep type instantiation
+        const sharedWithArray = data.shared_with as any;
         
-        if (Array.isArray(sharedWithData)) {
-          for (const item of sharedWithData) {
+        // Safely convert to string array
+        if (Array.isArray(sharedWithArray)) {
+          sharedWithArray.forEach((item) => {
             if (item !== null && item !== undefined) {
               sharedWithIds.push(String(item));
             }
-          }
+          });
         }
       }
       
