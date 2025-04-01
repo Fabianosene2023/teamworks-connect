@@ -45,6 +45,15 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   departments,
   isLoading
 }) => {
+  // Check if editedTask is undefined and provide default values
+  const safeEditedTask = editedTask || {
+    title: "",
+    description: "",
+    priority: "medium" as "low" | "medium" | "high",
+    department_id: "",
+    due_date: ""
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -59,23 +68,23 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             <Label htmlFor="title">Título</Label>
             <Input
               id="title"
-              value={editedTask.title}
-              onChange={(e) => setEditedTask({...editedTask, title: e.target.value})}
+              value={safeEditedTask.title}
+              onChange={(e) => setEditedTask({...safeEditedTask, title: e.target.value})}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
             <Textarea
               id="description"
-              value={editedTask.description}
-              onChange={(e) => setEditedTask({...editedTask, description: e.target.value})}
+              value={safeEditedTask.description}
+              onChange={(e) => setEditedTask({...safeEditedTask, description: e.target.value})}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="priority">Prioridade</Label>
             <Select
-              value={editedTask.priority}
-              onValueChange={(value) => setEditedTask({...editedTask, priority: value as "low" | "medium" | "high"})}
+              value={safeEditedTask.priority}
+              onValueChange={(value) => setEditedTask({...safeEditedTask, priority: value as "low" | "medium" | "high"})}
             >
               <SelectTrigger id="priority">
                 <SelectValue placeholder="Selecione a prioridade" />
@@ -90,8 +99,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           <div className="space-y-2">
             <Label htmlFor="department">Departamento</Label>
             <Select
-              value={editedTask.department_id}
-              onValueChange={(value) => setEditedTask({...editedTask, department_id: value})}
+              value={safeEditedTask.department_id}
+              onValueChange={(value) => setEditedTask({...safeEditedTask, department_id: value})}
             >
               <SelectTrigger id="department">
                 <SelectValue placeholder="Selecione o departamento" />
@@ -110,8 +119,8 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
             <Input
               id="due_date"
               type="date"
-              value={editedTask.due_date}
-              onChange={(e) => setEditedTask({...editedTask, due_date: e.target.value})}
+              value={safeEditedTask.due_date}
+              onChange={(e) => setEditedTask({...safeEditedTask, due_date: e.target.value})}
             />
           </div>
         </div>
@@ -119,7 +128,7 @@ export const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={onSave} disabled={isLoading || !editedTask.title}>
+          <Button onClick={onSave} disabled={isLoading || !safeEditedTask.title}>
             {isLoading ? "Salvando..." : "Salvar alterações"}
           </Button>
         </DialogFooter>
