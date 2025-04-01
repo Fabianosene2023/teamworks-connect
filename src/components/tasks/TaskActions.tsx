@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +18,7 @@ interface TaskActionsProps {
     department?: string;
     due_date?: Date | string;
     status: string;
-    shared_with?: string[];
+    shared_with: string[];
   };
   departments: any[];
   onTaskUpdated: () => void;
@@ -105,7 +104,8 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         taskToClone.created_by = user.id;
         
         // Ensure shared_with is an array
-        taskToClone.shared_with = taskToClone.shared_with || [];
+        const sharedWith = Array.isArray(taskToClone.shared_with) ? taskToClone.shared_with : [];
+        taskToClone.shared_with = sharedWith;
         
         // Insert the new task
         const { error: insertError } = await supabase
