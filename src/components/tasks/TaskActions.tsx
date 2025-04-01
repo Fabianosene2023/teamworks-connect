@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -236,23 +235,13 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      // Create a new empty array with explicit type
-      const sharedWithIds: string[] = [];
+      let sharedWithIds: string[] = [];
       
-      // Safely process the shared_with data if it exists
       if (data && data.shared_with) {
-        // Cast to a more basic type to avoid deep type instantiation
-        const rawSharedWith: unknown = data.shared_with;
-        
-        // Check if it's actually an array
-        if (Array.isArray(rawSharedWith)) {
-          // Use simple iteration with explicit type checking
-          for (let i = 0; i < rawSharedWith.length; i++) {
-            const item = rawSharedWith[i];
-            if (typeof item === 'string') {
-              sharedWithIds.push(item);
-            }
-          }
+        if (Array.isArray(data.shared_with)) {
+          sharedWithIds = data.shared_with
+            .filter(id => id !== null && id !== undefined)
+            .map(id => String(id));
         }
       }
       
@@ -265,7 +254,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      // Add the new user ID to our safely created array
       sharedWithIds.push(userData.id);
       
       const { error: updateError } = await supabase
