@@ -237,7 +237,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const existingSharedWith = data.shared_with as unknown[];
+        const existingSharedWith = data.shared_with as any[];
         for (let i = 0; i < existingSharedWith.length; i++) {
           const id = existingSharedWith[i];
           if (typeof id === 'string') {
@@ -302,7 +302,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(false)}
+        onDelete={() => setIsDeleteDialogOpen(true)}
       />
       
       <TaskDeleteDialog 
