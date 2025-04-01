@@ -234,7 +234,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      const sharedWith: string[] = data?.shared_with as string[] || [];
+      const sharedWith = Array.isArray(data?.shared_with) ? [...data.shared_with] : [];
       
       if (sharedWith.includes(userData.id)) {
         toast({
@@ -245,7 +245,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      const newSharedWith = [...sharedWith, userData.id];
+      const newSharedWith: string[] = [...sharedWith, userData.id];
       
       const { error: updateError } = await supabase
         .from("tasks")
