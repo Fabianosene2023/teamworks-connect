@@ -31,13 +31,11 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   const [isShareUserDialogOpen, setIsShareUserDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Share form state
   const [shareEmail, setShareEmail] = useState("");
   const [shareType, setShareType] = useState<"user" | "email" | "whatsapp">("email");
   const [shareMessage, setShareMessage] = useState("");
   const [userEmail, setUserEmail] = useState("");
   
-  // Edit form state
   const [editedTask, setEditedTask] = useState({
     title: task.title,
     description: task.description || "",
@@ -236,13 +234,9 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      const currentTask = data as { shared_with: string[] | null };
+      const sharedWith: string[] = data?.shared_with as string[] || [];
       
-      const currentSharedWith: string[] = Array.isArray(currentTask?.shared_with) 
-        ? currentTask.shared_with.filter(id => typeof id === 'string')
-        : [];
-      
-      if (currentSharedWith.includes(userData.id)) {
+      if (sharedWith.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -251,10 +245,12 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
+      const newSharedWith = [...sharedWith, userData.id];
+      
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
-          shared_with: [...currentSharedWith, userData.id],
+          shared_with: newSharedWith,
         })
         .eq("id", task.id);
         
