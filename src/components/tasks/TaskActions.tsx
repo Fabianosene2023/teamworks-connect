@@ -234,9 +234,17 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         
       if (taskError) throw taskError;
       
-      const sharedWith = Array.isArray(data?.shared_with) ? [...data.shared_with] : [];
+      const currentSharedWith: string[] = [];
       
-      if (sharedWith.includes(userData.id)) {
+      if (data && data.shared_with && Array.isArray(data.shared_with)) {
+        data.shared_with.forEach((id: any) => {
+          if (typeof id === 'string') {
+            currentSharedWith.push(id);
+          }
+        });
+      }
+      
+      if (currentSharedWith.includes(userData.id)) {
         toast({
           title: "Aviso",
           description: "Tarefa já compartilhada com este usuário",
@@ -245,7 +253,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         return;
       }
       
-      const newSharedWith: string[] = [...sharedWith, userData.id];
+      const newSharedWith: string[] = [...currentSharedWith, userData.id];
       
       const { error: updateError } = await supabase
         .from("tasks")
