@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -238,7 +239,6 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         throw userError;
       }
       
-      // First update the Supabase schema to include shared_with if it doesn't exist
       // Get the current task
       const { data: currentTask, error: taskError } = await supabase
         .from("tasks")
@@ -312,7 +312,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(false)}
+        onDelete={() => setIsDeleteDialogOpen(true)}
       />
       
       {/* Dialogs */}

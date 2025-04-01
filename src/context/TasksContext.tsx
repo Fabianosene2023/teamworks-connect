@@ -1,26 +1,10 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isAdmin } from "@/lib/departments";
-
-interface Department {
-  id: string;
-  name: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: string;
-  department_id: string;
-  created_by: string;
-  assigned_to: string;
-  status: string;
-  position: number;
-  due_date: string | null;
-  shared_with: string[];
-}
+import { fetchAllTasks, fetchTasksByDepartment, fetchUserTasks } from "@/lib/taskServices";
+import { Task, Department } from "@/types/taskTypes";
 
 interface TasksContextType {
   tasks: Task[];
@@ -64,7 +48,8 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         // Check if user is admin
         if (isAdmin(user.email)) {
-          fetchAllTasks();
+          const taskData = await fetchAllTasks();
+          updateTasksState(taskData);
         } else {
           // Get user's department
           const { data: profileData, error: profileError } = await supabase
@@ -75,15 +60,18 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             
           if (profileError) {
             console.error("Error fetching profile:", profileError);
-            fetchUserTasks(user.id);
+            const userTasksData = await fetchUserTasks(user.id);
+            updateTasksState(userTasksData);
             return;
           }
           
           if (profileData?.department_id) {
             setUserDepartment(profileData.department_id);
-            fetchTasksByDepartment(profileData.department_id);
+            const deptTasksData = await fetchTasksByDepartment(profileData.department_id);
+            updateTasksState(deptTasksData);
           } else {
-            fetchUserTasks(user.id);
+            const userTasksData = await fetchUserTasks(user.id);
+            updateTasksState(userTasksData);
           }
         }
       }
@@ -107,141 +95,10 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchDepartments();
   }, []);
 
-  const fetchAllTasks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          departments(name)
-        `)
-        .order("position");
-        
-      if (error) throw error;
-      
-      const tasksWithDetails = data?.map((task: any) => {
-        return {
-          ...task,
-          department: task.departments?.name || "",
-          priority: ensureValidPriority(task.priority),
-          shared_with: task.shared_with || []
-        };
-      }) || [];
-      
-      setTasks(tasksWithDetails as Task[]);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao carregar tarefas",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchTasksByDepartment = async (departmentId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          departments(name)
-        `)
-        .eq("department_id", departmentId)
-        .order("position");
-        
-      if (error) throw error;
-      
-      const tasksWithDetails = data?.map((task: any) => {
-        return {
-          ...task,
-          department: task.departments?.name || "",
-          priority: ensureValidPriority(task.priority),
-          shared_with: task.shared_with || []
-        };
-      }) || [];
-      
-      setTasks(tasksWithDetails as Task[]);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao carregar tarefas",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchUserTasks = async (userId: string) => {
-    try {
-      // Fetch tasks created by the user
-      const { data: createdTasks, error: createdError } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          departments(name)
-        `)
-        .eq("created_by", userId)
-        .order("position");
-        
-      if (createdError) throw createdError;
-      
-      // Fetch tasks assigned to the user
-      const { data: assignedTasks, error: assignedError } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          departments(name)
-        `)
-        .eq("assigned_to", userId)
-        .order("position");
-        
-      if (assignedError) throw assignedError;
-      
-      // Fetch tasks shared with the user
-      const { data: sharedTasks, error: sharedError } = await supabase
-        .from("tasks")
-        .select(`
-          *,
-          departments(name)
-        `)
-        .contains("shared_with", [userId])
-        .order("position");
-        
-      if (sharedError) throw sharedError;
-      
-      // Combine and deduplicate tasks
-      const allTasks = [...(createdTasks || []), ...(assignedTasks || []), ...(sharedTasks || [])];
-      const uniqueTasks = Array.from(new Map(allTasks.map(task => [task.id, task])).values());
-      
-      const tasksWithDetails = uniqueTasks.map((task: any) => {
-        return {
-          ...task,
-          department: task.departments?.name || "",
-          priority: ensureValidPriority(task.priority),
-          shared_with: task.shared_with || []
-        };
-      });
-      
-      setTasks(tasksWithDetails as Task[]);
-      setActiveTasks(tasksWithDetails.filter((task) => task.status === "active") as Task[]);
-      setCompletedTasks(tasksWithDetails.filter((task) => task.status === "completed") as Task[]);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao carregar tarefas",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const ensureValidPriority = (priority: string): "low" | "medium" | "high" => {
-    if (priority === "low" || priority === "medium" || priority === "high") {
-      return priority;
-    }
-    return "medium"; // valor padrão caso receba um valor inválido
+  const updateTasksState = (tasksData: Task[]) => {
+    setTasks(tasksData);
+    setActiveTasks(tasksData.filter(task => task.status === "active"));
+    setCompletedTasks(tasksData.filter(task => task.status === "completed"));
   };
 
   const handleTaskCreate = async (values: any) => {
@@ -318,9 +175,7 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         task.id === id ? { ...task, status: completed ? "completed" : "active" } : task
       );
       
-      setTasks(updatedTasks);
-      setActiveTasks(updatedTasks.filter((task) => task.status === "active"));
-      setCompletedTasks(updatedTasks.filter((task) => task.status === "completed"));
+      updateTasksState(updatedTasks);
       
       toast({
         title: "Sucesso",
@@ -383,11 +238,11 @@ export const TasksProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const refreshTasks = () => {
     if (isAdmin(userEmail)) {
-      fetchAllTasks();
+      fetchAllTasks().then(updateTasksState);
     } else if (userDepartment) {
-      fetchTasksByDepartment(userDepartment);
+      fetchTasksByDepartment(userDepartment).then(updateTasksState);
     } else if (userId) {
-      fetchUserTasks(userId);
+      fetchUserTasks(userId).then(updateTasksState);
     }
   };
 

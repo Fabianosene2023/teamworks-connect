@@ -30,7 +30,7 @@ export const DropdownActionsMenu: React.FC<DropdownActionsMenuProps> = ({
           <MoreHorizontal className="h-5 w-5 text-gray-500" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="z-50 bg-white">
         <DropdownMenuLabel>Ações da Tarefa</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onEdit}>

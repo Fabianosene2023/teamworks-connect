@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import ProjectCard from "@/components/projects/ProjectCard";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,24 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger,
+  SheetClose
+} from "@/components/ui/sheet";
 import { Plus, Search, Filter } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Projects = () => {
+  const { toast } = useToast();
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all-status");
+  const [isNewProjectSheetOpen, setIsNewProjectSheetOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Mock data for demonstration
   const projects = [
     {
@@ -98,6 +113,50 @@ const Projects = () => {
     },
   ];
 
+  const handleDepartmentChange = (value: string) => {
+    setSelectedDepartment(value);
+    toast({
+      title: "Filtro aplicado",
+      description: `Filtrando por departamento: ${value === "all" ? "Todos" : value}`,
+    });
+  };
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+    toast({
+      title: "Filtro aplicado",
+      description: `Filtrando por status: ${value === "all-status" ? "Todos" : value}`,
+    });
+  };
+
+  const handleNewProject = () => {
+    setIsNewProjectSheetOpen(false);
+    toast({
+      title: "Sucesso",
+      description: "Projeto criado com sucesso!",
+    });
+  };
+
+  // Filter projects based on selected filters
+  const filteredProjects = projects.filter(project => {
+    // Department filter
+    if (selectedDepartment !== "all" && project.department.toLowerCase() !== selectedDepartment) {
+      return false;
+    }
+    
+    // Status filter
+    if (selectedStatus !== "all-status" && project.status !== selectedStatus) {
+      return false;
+    }
+    
+    // Search filter
+    if (searchQuery && !project.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  });
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -108,10 +167,54 @@ const Projects = () => {
               Manage and track all your team projects
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Button>
+          <Sheet open={isNewProjectSheetOpen} onOpenChange={setIsNewProjectSheetOpen}>
+            <SheetTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Create New Project</SheetTitle>
+              </SheetHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="project-title" className="text-sm font-medium">Project Title</label>
+                  <Input id="project-title" placeholder="Enter project title" />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="project-description" className="text-sm font-medium">Description</label>
+                  <textarea 
+                    id="project-description" 
+                    placeholder="Enter project description" 
+                    className="w-full min-h-[100px] p-2 border rounded-md"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="project-department" className="text-sm font-medium">Department</label>
+                  <Select defaultValue="marketing">
+                    <SelectTrigger id="project-department">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="marketing">Marketing</SelectItem>
+                      <SelectItem value="design">Design</SelectItem>
+                      <SelectItem value="finance">Finance</SelectItem>
+                      <SelectItem value="engineering">Engineering</SelectItem>
+                      <SelectItem value="hr">HR</SelectItem>
+                      <SelectItem value="operations">Operations</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="pt-4">
+                  <SheetClose asChild>
+                    <Button onClick={handleNewProject}>Create Project</Button>
+                  </SheetClose>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -121,9 +224,11 @@ const Projects = () => {
               type="search"
               placeholder="Search projects..."
               className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select defaultValue="all">
+          <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
@@ -137,7 +242,7 @@ const Projects = () => {
               <SelectItem value="operations">Operations</SelectItem>
             </SelectContent>
           </Select>
-          <Select defaultValue="all-status">
+          <Select value={selectedStatus} onValueChange={handleStatusChange}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -155,7 +260,7 @@ const Projects = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <ProjectCard key={project.id} {...project} />
           ))}
         </div>
