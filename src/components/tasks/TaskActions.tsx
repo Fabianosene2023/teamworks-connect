@@ -235,17 +235,15 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       
       if (taskError) throw taskError;
       
-      const sharedWithIds: string[] = [];
+      let sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const existingSharedWith = data.shared_with;
-        if (Array.isArray(existingSharedWith)) {
-          for (let i = 0; i < existingSharedWith.length; i++) {
-            const id = existingSharedWith[i];
-            if (typeof id === 'string' || typeof id === 'number') {
-              sharedWithIds.push(String(id));
-            }
-          }
+        const currentSharedWith = data.shared_with as unknown;
+        
+        if (Array.isArray(currentSharedWith)) {
+          sharedWithIds = currentSharedWith
+            .filter(id => id !== null && id !== undefined)
+            .map(id => String(id));
         }
       }
       
