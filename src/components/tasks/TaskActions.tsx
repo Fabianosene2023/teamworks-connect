@@ -237,9 +237,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       const sharedWithIds: string[] = [];
       
       if (data && data.shared_with) {
-        const existingSharedWith = data.shared_with as any[];
-        for (let i = 0; i < existingSharedWith.length; i++) {
-          const id = existingSharedWith[i];
+        const sharedWithArray = Array.isArray(data.shared_with) ? data.shared_with : [];
+        
+        for (let i = 0; i < sharedWithArray.length; i++) {
+          const id = sharedWithArray[i];
           if (typeof id === 'string') {
             sharedWithIds.push(id);
           }
