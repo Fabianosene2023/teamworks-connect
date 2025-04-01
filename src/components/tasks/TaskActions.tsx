@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,8 +103,11 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         taskToClone.created_by = user.id;
         
         // Ensure shared_with is an array
-        const sharedWith = Array.isArray(taskToClone.shared_with) ? taskToClone.shared_with : [];
-        taskToClone.shared_with = sharedWith as string[];
+        const sharedWith: string[] = Array.isArray(taskToClone.shared_with) 
+          ? taskToClone.shared_with 
+          : [];
+          
+        taskToClone.shared_with = sharedWith;
         
         // Insert the new task
         const { error: insertError } = await supabase
@@ -253,12 +255,10 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
       if (taskError) throw taskError;
       
       // Make sure shared_with is defined as an array
-      let currentSharedWith: string[] = [];
-      
-      // Check if shared_with exists and is an array
-      if (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) {
-        currentSharedWith = currentTask.shared_with as string[];
-      }
+      const currentSharedWith: string[] = 
+        (currentTask && currentTask.shared_with && Array.isArray(currentTask.shared_with)) 
+          ? (currentTask.shared_with as string[]) 
+          : [];
       
       // Check if already shared
       if (currentSharedWith.includes(userData.id)) {
@@ -316,7 +316,7 @@ ${shareMessage ? `\nMensagem: ${shareMessage}` : ""}
         onEdit={() => setIsEditDialogOpen(true)}
         onDuplicate={handleDuplicate}
         onShare={() => setIsShareDialogOpen(true)}
-        onDelete={() => setIsDeleteDialogOpen(true)}
+        onDelete={() => setIsDeleteDialogOpen(false)}
       />
       
       {/* Dialogs */}
