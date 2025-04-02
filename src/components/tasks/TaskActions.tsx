@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +37,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   const [shareEmail, setShareEmail] = useState("");
   const [shareMessage, setShareMessage] = useState("");
   
-  // Initialize editedTask with the task data
   const [editedTask, setEditedTask] = useState({
     title: task.title || "",
     description: task.description || "",
@@ -50,7 +48,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
   });
 
   const handleEdit = () => {
-    // Re-initialize editedTask to ensure it has the latest task data
     setEditedTask({
       title: task.title || "",
       description: task.description || "",
@@ -157,7 +154,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         throw userError;
       }
 
-      // Get current shared_with array
       const { data, error: taskError } = await supabase
         .from("tasks")
         .select("shared_with")
@@ -166,15 +162,15 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
 
       if (taskError) throw taskError;
 
-      // Create a simple string array to avoid type complexity
-      let sharedWithIds: string[] = [];
+      const sharedWithIds: string[] = [];
       
-      // Safely handle the shared_with data
       if (data && data.shared_with) {
-        // Use Array.isArray for type safety
         if (Array.isArray(data.shared_with)) {
-          // Map to string type explicitly
-          sharedWithIds = data.shared_with.map(id => String(id));
+          data.shared_with.forEach((id: any) => {
+            if (id) {
+              sharedWithIds.push(String(id));
+            }
+          });
         }
       }
 
@@ -187,10 +183,8 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
         return;
       }
 
-      // Add the new user ID to the array
       sharedWithIds.push(userData.id);
 
-      // Update the task with the new shared_with array
       const { error: updateError } = await supabase
         .from("tasks")
         .update({
@@ -223,7 +217,6 @@ const TaskActions: React.FC<TaskActionsProps> = ({ task, departments, onTaskUpda
     try {
       setIsLoading(true);
       
-      // Ensure due_date is a string or null
       const due_date = task.due_date 
         ? (typeof task.due_date === 'string' 
           ? task.due_date 
