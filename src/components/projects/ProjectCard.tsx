@@ -1,17 +1,14 @@
-
 import React from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card, CardContent, CardFooter, CardHeader, CardTitle
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
 interface ProjectCardProps {
@@ -29,7 +26,7 @@ interface ProjectCardProps {
   color?: string;
 }
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: ProjectCardProps["status"]) => {
   switch (status) {
     case "not-started":
       return "bg-gray-200 text-gray-700";
@@ -44,7 +41,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getStatusText = (status: string) => {
+const getStatusText = (status: ProjectCardProps["status"]) => {
   switch (status) {
     case "not-started":
       return "Not Started";
@@ -60,7 +57,6 @@ const getStatusText = (status: string) => {
 };
 
 const ProjectCard: React.FC<ProjectCardProps> = ({
-  id,
   title,
   description,
   status,
@@ -76,7 +72,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           <Badge variant="outline" className="mb-1">{department}</Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="hover:bg-gray-100 p-1 rounded-md">
+              <button type="button" className="hover:bg-gray-100 p-1 rounded-md">
                 <MoreHorizontal className="h-5 w-5 text-gray-500" />
               </button>
             </DropdownMenuTrigger>
@@ -93,12 +89,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
+
       <CardContent>
         <p className="text-sm text-gray-500 line-clamp-2 mb-2">{description}</p>
         <div className="flex justify-between items-center">
-          <Badge className={getStatusColor(status)}>
-            {getStatusText(status)}
-          </Badge>
+          <Badge className={getStatusColor(status)}>{getStatusText(status)}</Badge>
           {dueDate && (
             <div className="flex items-center gap-1 text-xs text-gray-500">
               <CalendarClock size={14} />
@@ -107,11 +102,16 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           )}
         </div>
       </CardContent>
+
       <CardFooter className="pt-2 flex justify-between">
         <div className="flex -space-x-2">
           {members.slice(0, 3).map((member) => (
-            <Avatar key={member.id} className="border-2 border-white h-7 w-7">
-              <AvatarImage src={member.avatar} alt={member.name} />
+            <Avatar key={`${member.id}-${member.name}`} className="border-2 border-white h-7 w-7">
+              <AvatarImage
+                src={member.avatar}
+                alt={member.name}
+                onError={(e) => (e.currentTarget.style.display = "none")}
+              />
               <AvatarFallback className="text-xs">
                 {member.name.split(" ").map(n => n[0]).join("")}
               </AvatarFallback>
