@@ -1,131 +1,233 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import ProjectCard from "@/components/projects/ProjectCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Filter } from "lucide-react";
 import {
-  Card, CardContent, CardFooter, CardHeader, CardTitle
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreHorizontal, CalendarClock } from "lucide-react";
-import { cn } from "@/lib/utils";
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
 
-interface ProjectCardProps {
+interface ProjectProps {
   id: string;
   title: string;
   description: string;
   status: "not-started" | "in-progress" | "completed" | "on-hold";
   dueDate?: string;
   department: string;
-  members: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>;
+  members: Array<{ id: string; name: string; avatar?: string }>;
   color?: string;
 }
 
-const getStatusColor = (status: ProjectCardProps["status"]) => {
-  switch (status) {
-    case "not-started":
-      return "bg-gray-200 text-gray-700";
-    case "in-progress":
-      return "bg-blue-100 text-blue-700";
-    case "completed":
-      return "bg-green-100 text-green-700";
-    case "on-hold":
-      return "bg-yellow-100 text-yellow-700";
-    default:
-      return "bg-gray-200 text-gray-700";
-  }
-};
+const Projects: React.FC = () => {
+  const { toast } = useToast();
 
-const getStatusText = (status: ProjectCardProps["status"]) => {
-  switch (status) {
-    case "not-started":
-      return "Not Started";
-    case "in-progress":
-      return "In Progress";
-    case "completed":
-      return "Completed";
-    case "on-hold":
-      return "On Hold";
-    default:
-      return "Unknown";
-  }
-};
+  // State
+  const [projects, setProjects] = useState<ProjectProps[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all-status");
+  const [isNewProjectSheetOpen, setIsNewProjectSheetOpen] = useState(false);
 
-const ProjectCard: React.FC<ProjectCardProps> = ({
-  title,
-  description,
-  status,
-  dueDate,
-  department,
-  members,
-  color = "bg-team-blue-light border-l-team-blue",
-}) => {
+  // Fetch projects from API on mount
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const token = localStorage.getItem("authToken");
+        const resp = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL || ""}/api/projects`,
+          {
+            headers: {
+              Authorization: token ? `Bearer ${token}` : undefined,
+            },
+          }
+        );
+        setProjects(resp.data);
+      } catch (err: any) {
+        console.error("Erro ao buscar projetos:", err);
+        setError(err.response?.data?.message || err.message);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os projetos.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProjects();
+  }, [toast]);
+
+  // Handlers
+  const handleDepartmentChange = (value: string) => {
+    setSelectedDepartment(value);
+    toast({
+      title: "Filtro aplicado",
+      description: `Departamento: ${value === "all" ? "Todos" : value}`,
+    });
+  };
+
+  const handleStatusChange = (value: string) => {
+    setSelectedStatus(value);
+    toast({
+      title: "Filtro aplicado",
+      description: `Status: ${value === "all-status" ? "Todos" : value}`,
+    });
+  };
+
+  const handleNewProject = () => {
+    setIsNewProjectSheetOpen(false);
+    toast({
+      title: "Sucesso",
+      description: "Projeto criado com sucesso!",
+    });
+  };
+
+  // Filter projects
+  const filteredProjects = projects.filter((project) => {
+    if (
+      selectedDepartment !== "all" &&
+      project.department.toLowerCase() !== selectedDepartment
+    ) {
+      return false;
+    }
+    if (selectedStatus !== "all-status" && project.status !== selectedStatus) {
+      return false;
+    }
+    if (
+      searchQuery &&
+      !project.title.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  // Render
   return (
-    <Card className={cn("border-l-4", color)}>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <Badge variant="outline" className="mb-1">{department}</Badge>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="hover:bg-gray-100 p-1 rounded-md">
-                <MoreHorizontal className="h-5 w-5 text-gray-500" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem>Share</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <CardTitle className="text-lg">{title}</CardTitle>
-      </CardHeader>
+    <MainLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <p className="text-muted-foreground">
+              Manage and track all your team projects
+            </p>
+          </div>
 
-      <CardContent>
-        <p className="text-sm text-gray-500 line-clamp-2 mb-2">{description}</p>
-        <div className="flex justify-between items-center">
-          <Badge className={getStatusColor(status)}>{getStatusText(status)}</Badge>
-          {dueDate && (
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <CalendarClock size={14} />
-              <span>{dueDate}</span>
-            </div>
-          )}
+          {/* New Project Sheet */}
+          <Sheet
+            open={isNewProjectSheetOpen}
+            onOpenChange={setIsNewProjectSheetOpen}
+          >
+            <SheetTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Create New Project</SheetTitle>
+              </SheetHeader>
+              {/* ... form fields ... */}
+              <div className="pt-4">
+                <SheetClose asChild>
+                  <Button onClick={handleNewProject}>Create Project</Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      </CardContent>
 
-      <CardFooter className="pt-2 flex justify-between">
-        <div className="flex -space-x-2">
-          {members.slice(0, 3).map((member) => (
-            <Avatar key={`${member.id}-${member.name}`} className="border-2 border-white h-7 w-7">
-              <AvatarImage
-                src={member.avatar}
-                alt={member.name}
-                onError={(e) => (e.currentTarget.style.display = "none")}
-              />
-              <AvatarFallback className="text-xs">
-                {member.name.split(" ").map(n => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
-          ))}
-          {members.length > 3 && (
-            <div className="flex items-center justify-center h-7 w-7 rounded-full bg-gray-200 text-xs font-medium text-gray-600 border-2 border-white">
-              +{members.length - 3}
-            </div>
-          )}
+        {/* Filters & Search */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search projects..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <Select
+            value={selectedDepartment}
+            onValueChange={handleDepartmentChange}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              <SelectItem value="marketing">Marketing</SelectItem>
+              <SelectItem value="design">Design</SelectItem>
+              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="engineering">Engineering</SelectItem>
+              <SelectItem value="hr">HR</SelectItem>
+              <SelectItem value="operations">Operations</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedStatus}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-status">All Status</SelectItem>
+              <SelectItem value="not-started">Not Started</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="on-hold">On Hold</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" size="icon">
+            <Filter className="h-4 w-4" />
+          </Button>
         </div>
-      </CardFooter>
-    </Card>
+
+        {/* Loading & Error States */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            Loading projects...
+          </div>
+        ) : error ? (
+          <div className="text-red-600">Error: {error}</div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="text-gray-500">No projects found.</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProjects.map((project) => (
+              <ProjectCard key={project.id} {...project} />
+            ))}
+          </div>
+        )}
+      </div>
+    </MainLayout>
   );
 };
 
-export default ProjectCard;
+export default Projects;
